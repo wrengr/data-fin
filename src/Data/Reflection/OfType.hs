@@ -99,11 +99,11 @@ data Iso a x y = Iso
 
 -- | If @x==y@ then return proof of that fact. The proof is quite
 -- weak: we only prove @(OfType x a \<-\> OfType y a)@, whereas
--- we'd really like to prove @(OfType x a ~ OfType y a)@. Of course,
--- it's worth noting that @OfType@ is not injective in the first
--- type argument (since there may be many reifications of the same
--- value), so our desired goal would not admit proving @x~y@ (which
--- would be unsound).
+-- we'd really like to prove @(OfType x a ~ OfType y a)@. However,
+-- in order to implement that latter goal, you need to implement
+-- true singleton types using a GADT; for an example of this, see:
+--
+--  * <http://typesandkinds.wordpress.com/2012/12/01/decidable-propositional-equality-in-haskell/>
 --
 -- N.B., even if you break the type system to fabricate invalid
 -- proofs of @(OfType x a)@ or @(OfType y a)@, the result (if it
