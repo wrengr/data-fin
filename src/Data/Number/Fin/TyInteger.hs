@@ -57,7 +57,10 @@ module Data.Number.Fin.TyInteger
     (
     -- * The new code
       OfType()
-    , getValueOfType
+    , from_OfType
+    , to_OfType
+    , to_OfTypeCPS
+    , _OfType
     -- * The original code
     , reifyIntegral
     , reifyInt
@@ -321,10 +324,46 @@ newtype OfType x a = OfType a
     deriving (Read, Show, Eq, Ord)
     -- N.B., do not export the constructor; else this is equivalent to @Tagged x a@, which allows people to change the tag!
 
--- | Given a proof that @x@ is of type @a@, return @x@.
-getValueOfType :: OfType x a -> a
-getValueOfType (OfType a) = a
-{-# INLINE getValueOfType #-}
+
+-- | Given a proof that @x@ has type @a@, return @x@.
+from_OfType :: OfType x a -> a
+from_OfType (OfType a) = a
+{-# INLINE from_OfType #-}
+
+
+-- | Given @x@, return proof that @x@ has type @a@--- in
+-- continuation-passing style.
+to_OfTypeCPS :: a -> (forall x. OfType x a -> r) -> r
+to_OfTypeCPS x k = k (OfType x)
+{-# INLINE to_OfTypeCPS #-}
+
+
+-- | Given @y@, if @y == x@ then return proof that @x@ has type @a@.
+to_OfType
+    :: forall a x. (Eq a, Reifies (OfType x a) (OfType x a))
+    => a -> Maybe (OfType x a)
+to_OfType y =
+    if OfType y == (_OfType :: OfType x a)
+    then Just (OfType y)
+    else Nothing
+{-# INLINE to_OfType #-}
+
+
+-- | The proof that @x@ has type @a@... if there is one. If there
+-- isn't, then it's a type error; we never return an undefined
+-- value.
+_OfType :: Reifies (OfType x a) (OfType x a) => OfType x a
+_OfType = reflect_OfType Proxy
+{-# INLINE _OfType #-}
+
+
+-- | The variant of 'reflect' which is usually what we want.
+reflect_OfType
+    :: forall x a. Reifies (OfType x a) (OfType x a)
+    => Proxy x -> OfType x a
+reflect_OfType _ = reflect (Proxy :: Proxy (OfType x a))
+{-# INLINE reflect_OfType #-}
+
 
 {- TODO: prove correct so that we can use these optimized instances
 instance Eq (OfType x a) where

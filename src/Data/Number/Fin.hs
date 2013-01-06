@@ -27,7 +27,7 @@ module Data.Number.Fin
     , showFinType
     , showsFinType
     , toFin
-    , toFinX
+    , toFinCPS
     , fromFin
     -- predView
     -- weaken
@@ -472,15 +472,15 @@ toFin i
 -- | Safely embed integers into @Fin n@, where @n@ is the first
 -- argument. We use rank-2 polymorphism to render the type-level
 -- @n@ existentially quantified, thereby hiding the dependent type
--- from the compiler. That is, given the call @toFinX n k i@, if
+-- from the compiler. That is, given the call @toFinCPS n k i@, if
 -- @i@ is a valid element of @Fin n@ then we will pass it to the
 -- continuation @k@ and wrap the result in @Just@; otherwise we
 -- return @Nothing@.
-toFinX :: Int -> (forall n. ReflectNum n => Fin n -> r) -> Int -> Maybe r
-toFinX n k i
+toFinCPS :: Int -> (forall n. ReflectNum n => Fin n -> r) -> Int -> Maybe r
+toFinCPS n k i
     | 0 <= i && i < n = Just (reifyInt n $ \(_::n) -> k (Fin i :: Fin n))
     | otherwise       = Nothing
-{-# INLINE toFinX #-}
+{-# INLINE toFinCPS #-}
 
 
 ----------------------------------------------------------------

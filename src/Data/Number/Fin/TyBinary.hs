@@ -1,3 +1,4 @@
+-- TODO: see also <http://okmij.org/ftp/Haskell/PeanoArithm.lhs>
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 {-# LANGUAGE EmptyDataDecls
            , DeriveDataTypeable

@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren ng thornton <wren@community.haskell.org>    ~ 2013.01.04
+-- wren ng thornton <wren@community.haskell.org>    ~ 2013.01.05
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -49,6 +49,7 @@ Library
     Exposed-Modules:   Data.Number.Fin
                      , Data.Number.Fin.TyInteger
                      , Data.Number.Fin.TyBinary
+                     , Data.Reflection.OfType
                      -- TODO: SafeEnum needs to be moved upstream
                      , Prelude.SafeEnum
                      , Data.Number.CalkinWilf
