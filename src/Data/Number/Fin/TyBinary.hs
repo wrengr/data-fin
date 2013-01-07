@@ -69,7 +69,7 @@ module Data.Number.Fin.TyBinary
     -- ** comparison
     , Compare, compare, NatLE, NatLT, assert_leq, min, max
     -- ** multiplication\/division
-    , Mul, mul, div, div2
+    , Mul, mul, div, div2 -- mul2 ?
     -- ** exponentiation\/logarithm
     , Exp2, exp2, log2
     -- ** GCD

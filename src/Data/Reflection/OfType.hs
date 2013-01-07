@@ -1,10 +1,11 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
-{-# LANGUAGE RankNTypes
+{-# LANGUAGE Rank2Types
+           , ExistentialQuantification
            , ScopedTypeVariables
            , MultiParamTypeClasses
            #-}
 ----------------------------------------------------------------
---                                                    2013.01.06
+--                                                    2013.01.07
 -- |
 -- Module      :  Data.Reflection.OfType
 -- Copyright   :  2012--2013 wren ng thornton,
@@ -14,49 +15,83 @@
 -- License     :  BSD3
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
--- Portability :  semi-portable (rank-N, MPTCs, scoped tyvars)
+-- Portability :  semi-portable (rank-2, existential, scoped tyvars, MPTCs)
 --
 -- A fork of @reflection-1.1.6@ for removing the fundep.
 ----------------------------------------------------------------
 module Data.Reflection.OfType
     (
     -- * Reification of type signature annotations
-      OfType(), the
+      HasType
+    , TypeFor
+    , OfType()
+    , the
     -- * Coersion between reified values
-    , Iso(), fstIso, sndIso, iso
+    , Iso()
+    , fwd
+    , bwd
+    , invert
+    , iso
     -- * Existential hiding of reified values
-    , Exists(), runExists, exists, choose
-    -- * Reflection of reified values
-    , IsOfType(reflect_), reflect
-    -- * Reification of values
-    , IsOfKind(reify_), reify
+    -- ** The existential monad
+    , Exists()
+    , exists
+    , runExists
+    , mapExists
+    , bindExists
+    -- ** The existential category
+    , Coexists(..)
+    , coexists
+    , uncoexists
+    , idExists
+    , composeExists
+    -- ** The inhabitation monad
+    , Inhabited(..)
+    , inhabit
+    , choose
+    , bindInhabited
+    -- * Reflection
+    , Reifies(..), reflect
+    -- * Reification
+    , Reflects(..), reify
     -- * Testing
     -- | These properties should always be true.
-    , prop_reifyTheReflection
-    , prop_reflectTheReification
+    , prop_reflectionsAreReified
+    , prop_reificationsAreReflected
     ) where
 
 import Data.Proxy          (Proxy(Proxy))
 import Control.Applicative (Applicative(..))
 
 ----------------------------------------------------------------
--- | Values of type @x\`OfType\`a@ are proofs that (the reflection
+-- | A value of type @x\`HasType\`a@ is a proof of the fact that
+-- @x@ has type @a@. This is an 'OfType' alias for supporting infix
+-- use. /N.B.,/ infix use requires @TypeOperators@.
+type HasType x a = OfType a x
+
+
+-- | A value of type @a\`TypeFor\`x@ is a proof of the fact that
+-- @a@ is a type for @x@. This is an 'OfType' alias for supporting
+-- infix use. /N.B.,/ infix use requires @TypeOperators@.
+type TypeFor a x = OfType a x
+
+
+-- | Values of type @(OfType a x)@ are proofs that (the reflection
 -- of) @x@ has type @a@. Of course there's an easy proof: the
 -- reflection of @x@ as an actual value of type @a@; hence, this
 -- is a singleton type whose only value is the reflection of @x@
--- at type @a@. The name is chosen to support infix use. And, indeed,
--- you can use it infix (provided @TypeOperators@ is enabled).
+-- at type @a@. If we had true dependent types, this would be:
 --
--- If we had true dependent types, this would be:
+-- > data OfType (a::*) :: a -> * where
+-- >      OfType_ :: (x::a) -> OfType a x
 --
--- > -- | @x@ has/is of type @a@.
--- > type OfType x a = TypeOf a x
--- >
--- > -- | @a@ is a type of/for @x@.
--- > data TypeOf (a::*) :: a -> * where
--- >      TypeOf_ :: (x::a) -> TypeOf a x
---
-newtype OfType x a = OfType a
+-- There are two main ways to construct proofs: 'reify', and
+-- 'reflect'. These correspond to the two ways of constructing an
+-- association between the value-level and the type-level (from
+-- values to types, and from types to values, respectively). A
+-- secondary way to construct proofs is to use 'inhabit', however
+-- this only provides access to the proof in a monadic context.
+newtype OfType a x = OfType a
     deriving (Show, Eq, Ord)
     -- N.B., do not export the constructor; else this is equivalent
     -- to @Tagged x a@, which allows people to change the tag!
@@ -68,50 +103,54 @@ newtype OfType x a = OfType a
 
 
 -- | Given a proof that some value @x@ has type @a@, return the value.
-the :: OfType x a -> a
+the :: OfType a x -> a
 the (OfType a) = a
 {-# INLINE the #-}
 
-{-
--- The 'Read' instance is only provided because we can. However,
--- note that it is exceptionally weak since you can only read things
--- you could've gotten from 'reflect' anyways, and it's more expensive
--- since we need to check that the read value is equal to @x@.
-
-instance (IsOfType x a, Eq a, Read a) => Read (OfType x a) where
-    readsPrec p str = reifys id (,) (readsPrec p str)
-    {-# INLINE readsPrec #-}
--}
-
 
 ----------------------------------------------------------------
--- | The types @x@ and @y@ are isomorphic as reifications of @a@.
+-- We could generalize this to be indexed by @f@ instead of @OfType
+-- a@, but then we'd have to expose the constructor in order to
+-- have that extension be of any use...
+-- | The types @x@ and @y@ are isomorphic as values of type @a@.
 data Iso a x y = Iso
     {
-    -- |
-    -- > fstIso i . sndIso i == id
-    -- > sndIso i . fstIso i == id
-      fstIso :: OfType x a -> OfType y a
-    -- |
-    -- > fstIso i . sndIso i == id
-    -- > sndIso i . fstIso i == id
-    , sndIso :: OfType y a -> OfType x a
+    -- | The forward part of an isomorphism.
+    --
+    -- > fwd i . bwd i == id
+    -- > bwd i . fwd i == id
+      fwd :: OfType a x -> OfType a y
+
+    -- | The backward part of an isomorphism.
+    --
+    -- > fwd i . bwd i == id
+    -- > bwd i . fwd i == id
+    , bwd :: OfType a y -> OfType a x
     }
 
 
+-- | Invert the direction of the isomorphism.
+--
+-- > invert . invert == id
+--
+invert :: Iso a x y -> Iso a y x
+invert (Iso f g) = Iso g f
+{-# INLINE invert #-}
+
+
 -- | If @x==y@ then return proof of that fact. The proof is quite
--- weak: we only prove @(OfType x a \<-\> OfType y a)@, whereas
--- we'd really like to prove @(OfType x a ~ OfType y a)@. However,
+-- weak: we only prove @(OfType a x \<-\> OfType a y)@, whereas
+-- we'd really like to prove @(OfType a x ~ OfType a y)@. However,
 -- in order to implement that latter goal, you need to implement
 -- true singleton types using a GADT; for an example of this, see:
 --
 --  * <http://typesandkinds.wordpress.com/2012/12/01/decidable-propositional-equality-in-haskell/>
 --
--- N.B., even if you break the type system to fabricate invalid
--- proofs of @(OfType x a)@ or @(OfType y a)@, the result (if it
--- exists) will always be an isomorphism. Breaking the type system
--- just means you can fabricate invalid isomorphisms.
-iso :: Eq a => OfType x a -> OfType y a -> Maybe (Iso a x y)
+-- /N.B.,/ even if you break the type system to fabricate invalid
+-- proofs of @(OfType a x)@ or @(OfType a y)@, the result, if it
+-- exists, will always be an isomorphism. Breaking the type system
+-- only allows you to fabricate invalid isomorphisms.
+iso :: Eq a => OfType a x -> OfType a y -> Maybe (Iso a x y)
 iso x y
     | the x == the y = Just (Iso (OfType . the) (OfType . the))
     | otherwise      = Nothing
@@ -122,51 +161,138 @@ infix 4 `iso`
 -- If we had dependent types for defining TypeOf then it'd be easy:
 iso : forall {a} {x y}
     , (forall x0 y0 : a, {x0 = y0} + {x0 <> y0})
-    -> TypeOf a x
-    -> TypeOf a y
-    -> {TypeOf a x = TypeOf a y} + {TypeOf a x <> TypeOf a y}
+    -> OfType a x
+    -> OfType a y
+    -> {OfType a x = OfType a y} + {OfType a x <> OfType a y}
 iso eq x0 y0 :=
     match eq x y with
     | left EQ =>
-        left (TypeOf a x <> TypeOf a y)
-            (eq_ind_r (fun x1:a => TypeOf a x1 = TypeOf a y)
-                (eq_refl (TypeOf a y)) EQ)
+        left (OfType a x <> OfType a y)
+            (eq_ind_r (fun x1:a => OfType a x1 = OfType a y)
+                (eq_refl (OfType a y)) EQ)
     | right NE =>
-        right (TypeOf a x = TypeOf a y)
-            (fun E : TypeOf a x = TypeOf a y => NE (?1 a x y eq x0 y0 E))
+        right (OfType a x = OfType a y)
+            (fun E : OfType a x = OfType a y => NE (?1 a x y eq x0 y0 E))
        end
 -- Of course, it's not so easy to fill that hole on the inequality side... But then, we don't offer any proof there for the Haskell @iso@ either
 -}
 
 ----------------------------------------------------------------
--- | Proof that some reification of @x@ exists (or could exist)
--- such that @x@ has type @a@.
+-- | Proofs of the fact that there exists some type @a@ satisfying
+-- the predicate @f@.
 --
--- > Exists a ~ (exists x. OfType x a)
+-- > Exists f = exists a. f a
 --
-newtype Exists a = Exists (forall r. (forall x. OfType x a -> r) -> r)
-    -- N.B., the true existential is logically more powerful than
-    -- its double-negation. However, that would require
-    -- ExistentialQuantification, and we don't seem to need the
-    -- extra power. But then again, the double-negation (as a
-    -- newtype) requires rank-3 types...
+-- This type essentially forms a monad, but the kind isn't quite
+-- right for providing actual instances of 'Functor', 'Applicative',
+-- 'Monad', etc. So instead, we just provide the functions which
+-- would normally be provided by those classes.
+data Exists f = forall a. Exists !(f a)
+-- N.B., can't use newtype with existentials
+
+
+-- | Hide the fact that @a@ is the particular type satisfying the
+-- predicate @f@.
+exists :: f a -> Exists f
+exists = Exists
+{-# INLINE exists #-}
 
 
 -- | Eliminate the existential. This is a proof of the fact that:
 --
--- > (exists x. OfType x a) -> not (forall x. not (OfType x a))
+-- > (exists a. f a) ==> not (forall a. not (f a))
 --
-runExists :: Exists a -> (forall x. OfType x a -> r) -> r
-runExists (Exists x) = x
+runExists :: Exists f -> (forall a. f a -> r) -> r
+runExists (Exists f) k = k f
 {-# INLINE runExists #-}
+
+
+-- N.B., mapExists requires the real existential in order to avoid escape!
+-- | Apply a natural transformation to the predicate.
+mapExists :: (forall a. f a -> g a) -> Exists f -> Exists g
+mapExists eta (Exists f) = Exists (eta f)
+{-# INLINE mapExists #-}
+
+
+-- | Bind for the 'Exists' monad.
+bindExists :: Exists f -> (forall a. f a -> Exists g) -> Exists g
+bindExists (Exists f) g = g f
+{-# INLINE bindExists #-}
+
+
+----------------------------------------------------------------
+-- | Existential quantification in a negative position. When @b ~
+-- Exists g@, this is an alias for the morphisms in the Kleisli
+-- category of the 'Exists' monad. Unfortunately, even with this
+-- restriction, the kinds aren't quite right for giving a 'Category'
+-- instance. So instead, we just provide the functions which would
+-- normally be provided by that class.
+newtype Coexists f b = Coexists { unCoexists :: forall a. f a -> b }
+
+
+-- | A proof of the fact that:
+--
+-- > ((exists a. f a) -> b) ==> (forall a. (f a -> b))
+--
+-- When @b ~ Exists g@: map a @Hask@-morphism of 'Exists' into an
+-- @Exists@-morphism; aka, the inverse of the Kleisli category's
+-- extension operator (star operator).
+coexists :: (Exists f -> b) -> Coexists f b
+coexists g = Coexists (g . exists)
+{-# INLINE coexists #-}
+
+
+-- | A proof of the fact that:
+--
+-- > (forall a. (f a -> b)) ==> ((exists a. f a) -> b)
+--
+-- When @b ~ Exists g@: map the @Exists@-morphism into a @Hask@-morphism
+-- of 'Exists'; aka, the Kleisli category's extension operator (star
+-- operator); aka, apply an @Exists@-morphism. This is just @flip
+-- bindExists@.
+uncoexists :: Coexists f b -> Exists f -> b
+uncoexists (Coexists g) (Exists f) = g f
+{-# INLINE uncoexists #-}
+
+
+-- | The identity @Exists@-morphisms.
+idExists :: Coexists f (Exists f)
+idExists = Coexists Exists
+{-# INLINE idExists #-}
+
+
+-- | Compose @Exists@-morphisms.
+composeExists
+    :: Coexists g (Exists h)
+    -> Coexists f (Exists g)
+    -> Coexists f (Exists h)
+composeExists h (Coexists g) = Coexists (uncoexists h . g)
+{-# INLINE composeExists #-}
+
+
+----------------------------------------------------------------
+-- | Proof that some reification of @x@ exists (or could exist)
+-- such that @x@ has type @a@.
+--
+-- > Inhabited a ~ (exists x. OfType a x)
+--
+-- We use a newtype in order to give type class instances. The
+-- 'Read' and 'Show' instances are the most interesting. As a 'Monad'
+-- this is essentially just a glorified identity monad; the real
+-- magic happens when you use 'bindInhabited' in order to gain
+-- access to the proof.
+--
+-- BUG: the current 'Read' and 'Show' instances just read\/show the
+-- underlying type (i.e., @a@); they don't prepend the constructors.
+newtype Inhabited a = Inhabited { fromInhabited :: Exists (OfType a) }
 
 
 -- | Given (a reflection of) @x@, return proof that @x@ has type
 -- @a@. That is, we assert (the possibility of) the existence of a
 -- reification of @x@.
-exists :: a -> Exists a
-exists x = Exists (\k -> k (OfType x))
-{-# INLINE exists #-}
+inhabit :: a -> Inhabited a
+inhabit x = Inhabited (Exists (OfType x))
+{-# INLINE inhabit #-}
 
 
 -- | A constructive axiom of choice. If you can prove that there
@@ -174,51 +300,59 @@ exists x = Exists (\k -> k (OfType x))
 --
 -- > choose x = runExists x the
 --
-choose :: Exists a -> a
-choose x = runExists x the
+choose :: Inhabited a -> a
+choose (Inhabited (Exists (OfType x))) = x
 {-# INLINE choose #-}
 
 
-instance Functor Exists where
-    fmap f x = exists (f $ choose x)
+-- | A variant of 'bindExists' to reduce newtype noise. This is
+-- strictly more powerful than the @(>>=)@ for 'Inhabited'.
+bindInhabited
+    :: Inhabited a -> (forall x. OfType a x -> Inhabited b) -> Inhabited b
+bindInhabited (Inhabited (Exists f)) g = g f
+{-# INLINE bindInhabited #-}
+
+
+instance Functor Inhabited where
+    fmap f x = inhabit (f $ choose x)
     {-# INLINE fmap #-}
 
-instance Applicative Exists where
-    pure    = exists
-    f <*> x = exists (choose f $ choose x)
+instance Applicative Inhabited where
+    pure    = inhabit
+    f <*> x = inhabit (choose f $ choose x)
     {-# INLINE pure  #-}
     {-# INLINE (<*>) #-}
 
-instance Monad Exists where
-    return  = exists
+instance Monad Inhabited where
+    return  = inhabit
     x >>= f = f (choose x)
     {-# INLINE return #-}
     {-# INLINE (>>=)  #-}
 
-instance Read a => Read (Exists a) where
-    -- BUG: we should lex "Exists"
-    readsPrec p s = [(exists x,s') | (x,s') <- readsPrec p s]
+instance Read a => Read (Inhabited a) where
+    -- BUG: we should lex "Inhabited" etc
+    readsPrec p s = [(inhabit x,s') | (x,s') <- readsPrec p s]
     {-# INLINE readsPrec #-}
 
-instance Show a => Show (Exists a) where
-    -- BUG: we should prepend "Exists"
+instance Show a => Show (Inhabited a) where
+    -- BUG: we should prepend "Inhabited" etc
     showsPrec p x = showsPrec p (choose x)
     {-# INLINE showsPrec #-}
 
-instance Eq a => Eq (Exists a) where
+instance Eq a => Eq (Inhabited a) where
     x == y = choose x == choose y
     x /= y = choose x /= choose y
     {-# INLINE (==) #-}
     {-# INLINE (/=) #-}
 
-instance Ord a => Ord (Exists a) where
+instance Ord a => Ord (Inhabited a) where
     compare x y = compare (choose x) (choose y)
     x <  y      = choose x <  choose y
     x <= y      = choose x <= choose y
     x >  y      = choose x >  choose y
     x >= y      = choose x >= choose y
-    min x y     = exists (min (choose x) (choose y))
-    max x y     = exists (max (choose x) (choose y))
+    min x y     = inhabit (min (choose x) (choose y))
+    max x y     = inhabit (max (choose x) (choose y))
     {-# INLINE compare #-}
     {-# INLINE (<)  #-}
     {-# INLINE (<=) #-}
@@ -228,22 +362,26 @@ instance Ord a => Ord (Exists a) where
     {-# INLINE max  #-}
 
 ----------------------------------------------------------------
-class IsOfType x a where
+-- | The type @x@ reifies (a value of) type @a@ just in case we can
+-- reflect @x@ into a value of type @a@.
+class Reifies x a where
     -- | Given (a proxy for) @x@, return proof that (a reflection
     -- of) @x@ has type @a@. The only way you can do this is to
-    -- fabricate the reflection and hand it to 'exists'.
-    reflect_ :: proxy x -> Exists a
+    -- fabricate the reflection and hand it to 'inhabit'.
+    reflect_ :: proxy x -> Inhabited a
 
 
 -- | Given (a proxy for) @x@, return proof that (a reflection of)
 -- @x@ has type @a@.
-reflect :: forall a x. IsOfType x a => Proxy x -> OfType x a
+reflect :: forall a x. Reifies x a => Proxy x -> OfType a x
 reflect _ = OfType (choose (reflect_ (Proxy :: Proxy x)))
 {-# INLINE reflect #-}
 
 
 ----------------------------------------------------------------
-class IsOfKind x a where
+-- | The type @x@ reflects (a value of) type @a@ just in case some
+-- value of type @a@ is reified as @x@.
+class Reflects x a where
     -- | Given some @y@, if @y@ is the reflection of @x@ at type
     -- @a@, then return its proxy. The canonical instance is:
     --
@@ -256,25 +394,35 @@ class IsOfKind x a where
 
 -- | Given some @y@, if @y@ is the reflection of @x@ at type @a@,
 -- then return the proof that @x@ has type @a@.
-reify :: forall a x. IsOfKind x a => a -> Maybe (OfType x a)
+reify :: forall a x. Reflects x a => a -> Maybe (OfType a x)
 reify x = reify_ x fakeReflect
     where
-    fakeReflect :: Proxy x -> OfType x a
+    fakeReflect :: Proxy x -> OfType a x
     fakeReflect _ = OfType x
 {-# INLINE reify #-}
 
 
-prop_reifyTheReflection
-    :: forall a x. (IsOfType x a, IsOfKind x a, Eq a)
+-- | Reflections can always be reified. The @Proxy a@ is just for
+-- specifying the type @a@.
+--
+-- > reify . the . reflect == Just . reflect
+--
+prop_reflectionsAreReified
+    :: forall a x. (Reifies x a, Reflects x a, Eq a)
     => Proxy x -> Proxy a -> Bool
-prop_reifyTheReflection p _ =
-    let x = reflect p :: OfType x a
+prop_reflectionsAreReified p _ =
+    let x = reflect p :: OfType a x
     in  reify (the x) == Just x
 
 
-prop_reflectTheReification
-    :: (IsOfType x a, IsOfKind x a, Eq a) => Proxy x -> a -> Bool
-prop_reflectTheReification p x =
+-- | Reifications are reflected. Vacuously true when @x@ is not the
+-- reification of the @a@ we're given.
+--
+-- > maybe True (reflect p ==) (reify x)
+--
+prop_reificationsAreReflected
+    :: (Reifies x a, Reflects x a, Eq a) => Proxy x -> a -> Bool
+prop_reificationsAreReflected p x =
     case reify x of
     Just x' -> x' == reflect p
     Nothing -> True
@@ -286,17 +434,17 @@ data LT_ = LT_
 data EQ_ = EQ_ 
 data GT_ = GT_ 
 
-instance IsOfType LT_ Ordering where reflect_ _ = exists LT 
-instance IsOfType EQ_ Ordering where reflect_ _ = exists EQ 
-instance IsOfType GT_ Ordering where reflect_ _ = exists GT 
+instance Reifies LT_ Ordering where reflect_ _ = inhabit LT 
+instance Reifies EQ_ Ordering where reflect_ _ = inhabit EQ 
+instance Reifies GT_ Ordering where reflect_ _ = inhabit GT 
 
-instance IsOfKind LT_ Ordering where
+instance Reflects LT_ Ordering where
     reify_ LT k = Just (k Proxy)
     reify_ _  _ = Nothing
-instance IsOfKind EQ_ Ordering where
+instance Reflects EQ_ Ordering where
     reify_ EQ k = Just (k Proxy)
     reify_ _  _ = Nothing
-instance IsOfKind GT_ Ordering where
+instance Reflects GT_ Ordering where
     reify_ GT k = Just (k Proxy)
     reify_ _  _ = Nothing
 -}
