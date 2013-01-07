@@ -49,8 +49,10 @@ import Control.Applicative (Applicative(..))
 --
 -- If we had true dependent types, this would be:
 --
+-- > -- | @x@ has/is of type @a@.
 -- > type OfType x a = TypeOf a x
 -- >
+-- > -- | @a@ is a type of/for @x@.
 -- > data TypeOf (a::*) :: a -> * where
 -- >      TypeOf_ :: (x::a) -> TypeOf a x
 --
@@ -65,7 +67,7 @@ newtype OfType x a = OfType a
     -- 'unsafeCoerce').
 
 
--- | Given a proof that a value has type @a@, return the value.
+-- | Given a proof that some value @x@ has type @a@, return the value.
 the :: OfType x a -> a
 the (OfType a) = a
 {-# INLINE the #-}
