@@ -4,7 +4,7 @@
            , MultiParamTypeClasses
            #-}
 ----------------------------------------------------------------
---                                                    2013.01.05
+--                                                    2013.01.06
 -- |
 -- Module      :  Data.Reflection.OfType
 -- Copyright   :  2012--2013 wren ng thornton,

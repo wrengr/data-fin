@@ -10,7 +10,7 @@
            , TypeOperators
            #-}
 ----------------------------------------------------------------
---                                                    2013.01.04
+--                                                    2013.01.06
 -- |
 -- Module      :  Data.Number.Fin.TyBinary
 -- Copyright   :  2012--2013 wren ng thornton,
@@ -58,15 +58,21 @@ module Data.Number.Fin.TyBinary
     -- * Kind predicates
     , Nat, NatNE0
     -- * sample @Nat@ types and proxies for their values
-    , N0,   N1,   N2,   N3,   N4,   N5,   N6,   N7,   N8,   N9
+    , Nat0, Nat1, Nat2, Nat3, Nat4, Nat5, Nat6, Nat7, Nat8, Nat9
     , nat0, nat1, nat2, nat3, nat4, nat5, nat6, nat7, nat8, nat9
     
     -- * Arithmetic
+    -- ** successor\/predecessor
     , Succ, succ, pred
+    -- ** addition\/subtraction
     , Add, add, minus, subtract
+    -- ** comparison
     , Compare, compare, NatLE, NatLT, assert_leq, min, max
+    -- ** multiplication\/division
     , Mul, mul, div, div2
+    -- ** exponentiation\/logarithm
     , Exp2, exp2, log2
+    -- ** GCD
     , GCD, gcd
     ) where
 
@@ -172,27 +178,27 @@ div2 _ = Proxy
 {-# INLINE div2 #-}
 
 -- some popular numbers
-type N0 = B0 
-type N1 = B1 
-type N2 = B1:.B0 
-type N3 = B1:.B1 
-type N4 = B1:.B0:.B0 
-type N5 = B1:.B0:.B1 
-type N6 = B1:.B1:.B0 
-type N7 = B1:.B1:.B1 
-type N8 = B1:.B0:.B0:.B0 
-type N9 = B1:.B0:.B0:.B1 
+type Nat0 = B0 
+type Nat1 = B1 
+type Nat2 = B1:.B0 
+type Nat3 = B1:.B1 
+type Nat4 = B1:.B0:.B0 
+type Nat5 = B1:.B0:.B1 
+type Nat6 = B1:.B1:.B0 
+type Nat7 = B1:.B1:.B1 
+type Nat8 = B1:.B0:.B0:.B0 
+type Nat9 = B1:.B0:.B0:.B1 
 
-nat0 :: Proxy N0; nat0 = Proxy 
-nat1 :: Proxy N1; nat1 = Proxy 
-nat2 :: Proxy N2; nat2 = Proxy 
-nat3 :: Proxy N3; nat3 = Proxy 
-nat4 :: Proxy N4; nat4 = Proxy 
-nat5 :: Proxy N5; nat5 = Proxy 
-nat6 :: Proxy N6; nat6 = Proxy 
-nat7 :: Proxy N7; nat7 = Proxy 
-nat8 :: Proxy N8; nat8 = Proxy 
-nat9 :: Proxy N9; nat9 = Proxy 
+nat0 :: Proxy Nat0; nat0 = Proxy 
+nat1 :: Proxy Nat1; nat1 = Proxy 
+nat2 :: Proxy Nat2; nat2 = Proxy 
+nat3 :: Proxy Nat3; nat3 = Proxy 
+nat4 :: Proxy Nat4; nat4 = Proxy 
+nat5 :: Proxy Nat5; nat5 = Proxy 
+nat6 :: Proxy Nat6; nat6 = Proxy 
+nat7 :: Proxy Nat7; nat7 = Proxy 
+nat8 :: Proxy Nat8; nat8 = Proxy 
+nat9 :: Proxy Nat9; nat9 = Proxy 
 
 -- tn8 = reflect nat8
 
