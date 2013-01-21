@@ -1,11 +1,10 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
-{-# LANGUAGE Rank2Types
-           , ExistentialQuantification
+{-# LANGUAGE RankNTypes
            , ScopedTypeVariables
            , MultiParamTypeClasses
            #-}
 ----------------------------------------------------------------
---                                                    2013.01.07
+--                                                    2013.01.20
 -- |
 -- Module      :  Data.Reflection.OfType
 -- Copyright   :  2012--2013 wren ng thornton,
@@ -15,7 +14,7 @@
 -- License     :  BSD3
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
--- Portability :  semi-portable (rank-2, existential, scoped tyvars, MPTCs)
+-- Portability :  semi-portable (rank-N, scoped tyvars, MPTCs)
 --
 -- A fork of @reflection-1.1.6@ for removing the fundep.
 ----------------------------------------------------------------
@@ -26,6 +25,8 @@ module Data.Reflection.OfType
     , TypeFor
     , OfType()
     , the
+    , proxyOfType
+    , unproxyOfType
     -- * Coersion between reified values
     , Iso()
     , fwd
@@ -47,13 +48,17 @@ module Data.Reflection.OfType
     , composeExists
     -- ** The inhabitation monad
     , Inhabited(..)
+    , runInhabited
     , inhabit
     , choose
     , bindInhabited
     -- * Reflection
-    , Reifies(..), reflect
+    , Reifies(..)
+    , reflect
+    , reflect'
     -- * Reification
-    , Reflects(..), reify
+    , Reflects(..)
+    , reify
     -- * Testing
     -- | These properties should always be true.
     , prop_reflectionsAreReified
@@ -106,6 +111,19 @@ newtype OfType a x = OfType a
 the :: OfType a x -> a
 the (OfType a) = a
 {-# INLINE the #-}
+
+
+-- | A proxy constructor; for convenience.
+proxyOfType :: Proxy a -> Proxy x -> Proxy (OfType a x)
+proxyOfType _ _ = Proxy
+{-# INLINE proxyOfType #-}
+
+
+-- TODO: should we offer the parts separately instead of in a tuple?
+-- | A proxy destructor; for convenience.
+unproxyOfType :: Proxy (OfType a x) -> (Proxy a, Proxy x)
+unproxyOfType _ = (Proxy,Proxy)
+{-# INLINE unproxyOfType #-}
 
 
 ----------------------------------------------------------------
@@ -187,14 +205,13 @@ iso eq x0 y0 :=
 -- right for providing actual instances of 'Functor', 'Applicative',
 -- 'Monad', etc. So instead, we just provide the functions which
 -- would normally be provided by those classes.
-data Exists f = forall a. Exists !(f a)
--- N.B., can't use newtype with existentials
+newtype Exists f = Exists (forall r. (forall a. f a -> r) -> r)
 
 
 -- | Hide the fact that @a@ is the particular type satisfying the
 -- predicate @f@.
 exists :: f a -> Exists f
-exists = Exists
+exists x = Exists (\f -> f x)
 {-# INLINE exists #-}
 
 
@@ -203,20 +220,20 @@ exists = Exists
 -- > (exists a. f a) ==> not (forall a. not (f a))
 --
 runExists :: Exists f -> (forall a. f a -> r) -> r
-runExists (Exists f) k = k f
+runExists (Exists f) = f
 {-# INLINE runExists #-}
 
 
--- N.B., mapExists requires the real existential in order to avoid escape!
 -- | Apply a natural transformation to the predicate.
 mapExists :: (forall a. f a -> g a) -> Exists f -> Exists g
-mapExists eta (Exists f) = Exists (eta f)
+mapExists eta (Exists f) = f (exists . eta)
 {-# INLINE mapExists #-}
 
 
--- | Bind for the 'Exists' monad.
+-- | Bind for the 'Exists' monad. This is just a type-restricted
+-- version of 'runExists'.
 bindExists :: Exists f -> (forall a. f a -> Exists g) -> Exists g
-bindExists (Exists f) g = g f
+bindExists (Exists f) g = f g
 {-# INLINE bindExists #-}
 
 
@@ -251,13 +268,13 @@ coexists g = Coexists (g . exists)
 -- operator); aka, apply an @Exists@-morphism. This is just @flip
 -- bindExists@.
 uncoexists :: Coexists f b -> Exists f -> b
-uncoexists (Coexists g) (Exists f) = g f
+uncoexists (Coexists g) (Exists f) = f g
 {-# INLINE uncoexists #-}
 
 
 -- | The identity @Exists@-morphisms.
 idExists :: Coexists f (Exists f)
-idExists = Coexists Exists
+idExists = Coexists exists
 {-# INLINE idExists #-}
 
 
@@ -287,29 +304,36 @@ composeExists h (Coexists g) = Coexists (uncoexists h . g)
 newtype Inhabited a = Inhabited { fromInhabited :: Exists (OfType a) }
 
 
+-- | A variant of 'runExists' to reduce newtype noise.
+runInhabited :: Inhabited a -> (forall x. OfType a x -> r) -> r
+runInhabited (Inhabited (Exists f)) k = f k
+{-# INLINE runInhabited #-}
+
+
 -- | Given (a reflection of) @x@, return proof that @x@ has type
 -- @a@. That is, we assert (the possibility of) the existence of a
 -- reification of @x@.
 inhabit :: a -> Inhabited a
-inhabit x = Inhabited (Exists (OfType x))
+inhabit x = Inhabited (exists (OfType x))
 {-# INLINE inhabit #-}
 
 
 -- | A constructive axiom of choice. If you can prove that there
 -- exists a value of type @a@ then by golly there is one!
 --
--- > choose x = runExists x the
+-- > choose x = runInhabited x the
 --
 choose :: Inhabited a -> a
-choose (Inhabited (Exists (OfType x))) = x
+choose (Inhabited (Exists f)) = f the
 {-# INLINE choose #-}
 
 
 -- | A variant of 'bindExists' to reduce newtype noise. This is
--- strictly more powerful than the @(>>=)@ for 'Inhabited'.
+-- strictly more powerful than the @(>>=)@ for 'Inhabited'. This
+-- is just a type-restricted version of 'runInhabited'.
 bindInhabited
     :: Inhabited a -> (forall x. OfType a x -> Inhabited b) -> Inhabited b
-bindInhabited (Inhabited (Exists f)) g = g f
+bindInhabited (Inhabited (Exists f)) g = f g
 {-# INLINE bindInhabited #-}
 
 
@@ -365,17 +389,27 @@ instance Ord a => Ord (Inhabited a) where
 -- | The type @x@ reifies (a value of) type @a@ just in case we can
 -- reflect @x@ into a value of type @a@.
 class Reifies x a where
+    -- TODO: is this the type the most useful? or should we accept a @proxy(OfType a x)@ instead?
     -- | Given (a proxy for) @x@, return proof that (a reflection
     -- of) @x@ has type @a@. The only way you can do this is to
     -- fabricate the reflection and hand it to 'inhabit'.
     reflect_ :: proxy x -> Inhabited a
 
 
+-- TODO: is this the type the most useful for the default? or is reflect' better?
 -- | Given (a proxy for) @x@, return proof that (a reflection of)
 -- @x@ has type @a@.
-reflect :: forall a x. Reifies x a => Proxy x -> OfType a x
-reflect _ = OfType (choose (reflect_ (Proxy :: Proxy x)))
+reflect :: Reifies x a => Proxy x -> OfType a x
+reflect p = OfType (choose (reflect_ p))
 {-# INLINE reflect #-}
+
+
+-- | Given a proxy for proof that @x@ has type @a@, return the
+-- actual proof. This is a variant of 'reflect' which is occasionally
+-- useful for specifying the type @a@.
+reflect' :: Reifies x a => Proxy (OfType a x) -> OfType a x
+reflect' _ = reflect Proxy
+{-# INLINE reflect' #-}
 
 
 ----------------------------------------------------------------
@@ -392,26 +426,28 @@ class Reflects x a where
     reify_ :: a -> (Proxy x -> r) -> Maybe r
 
 
+-- TODO: is this the type the most useful? or should we take @Proxy x@?
 -- | Given some @y@, if @y@ is the reflection of @x@ at type @a@,
 -- then return the proof that @x@ has type @a@.
 reify :: forall a x. Reflects x a => a -> Maybe (OfType a x)
 reify x = reify_ x fakeReflect
     where
+    -- HACK: Must float out in order to propegate the return @x@ to @reify_@
     fakeReflect :: Proxy x -> OfType a x
     fakeReflect _ = OfType x
 {-# INLINE reify #-}
 
 
+----------------------------------------------------------------
 -- | Reflections can always be reified. The @Proxy a@ is just for
 -- specifying the type @a@.
 --
 -- > reify . the . reflect == Just . reflect
 --
 prop_reflectionsAreReified
-    :: forall a x. (Reifies x a, Reflects x a, Eq a)
-    => Proxy x -> Proxy a -> Bool
-prop_reflectionsAreReified p _ =
-    let x = reflect p :: OfType a x
+    :: (Reifies x a, Reflects x a, Eq a) => Proxy x -> Proxy a -> Bool
+prop_reflectionsAreReified p q =
+    let x = reflect' (proxyOfType q p)
     in  reify (the x) == Just x
 
 
