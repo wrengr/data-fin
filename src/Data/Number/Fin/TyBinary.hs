@@ -129,6 +129,8 @@ infixl 5 :.
 -- | Is @n@ a well-formed type of kind @Nat@? The only well-formed
 -- types of kind @Nat@ are type-level natural numbers in structurally
 -- little-endian binary.
+--
+-- The hidden type class @Nat_ n@ entails @Reifies n Integer@.
 class    Nat_ n => Nat n
 instance Nat_ n => Nat n -- this instance is "undecidable"
 
@@ -137,6 +139,8 @@ instance Nat_ n => Nat n -- this instance is "undecidable"
 -- types of kind @NatNE0@ are the non-zero well-formed types of
 -- kind @Nat@;, i.e., the type-level whole numbers in structurally
 -- little-endian binary.
+--
+-- The hidden type class @NatNE0_ n@ entails @Nat_ n@ and @Reifies n Integer@.
 class    NatNE0_ n => NatNE0 n
 instance NatNE0_ n => NatNE0 n -- this instance is "undecidable"
 
@@ -167,6 +171,68 @@ instance NatNE0_ x => Reifies (x:.B0) Integer where
     reflect p = 2 * reflect (div2 p)
 instance NatNE0_ x => Reifies (x:.B1) Integer where
     reflect p = 2 * reflect (div2 p) + 1
+
+{-
+-- BEWARE: Context reduction stack overflow; size = 20
+type MaxBoundInt8  = B1:.B1:.B1:.B1:.B1:.B1:.B1
+type MaxBoundInt16 = MaxBoundInt8:.B1:.B1:.B1:.B1:.B1:.B1:.B1:.B1
+type MaxBoundInt32 = Positive (D2 (D1(D4(D7 (D4(D8(D3 (D6(D4(D7 D_))))))))))
+type MaxBoundInt64 =
+    Positive (D9 (D2(D2(D3 (D3(D7(D2 (D0(D3(D6 (D8(D5(D4 (D7(D7(D5 (D8(D0(D7
+    D_)))))))))))))))))))
+-- TODO: MaxBoundInt
+type MaxBoundWord8  = B1:.B1:.B1:.B1:.B1:.B1:.B1:.B1
+type MaxBoundWord16 = MaxBoundWord8:.B1:.B1:.B1:.B1:.B1:.B1:.B1:.B1
+type MaxBoundWord32 = Positive (D4 (D2(D9(D4 (D9(D6(D7 (D2(D9(D5 D_))))))))))
+type MaxBoundWord64 =
+    Positive (D1(D8 (D4(D4(D6 (D7(D4(D4 (D0(D7(D3 (D7(D0(D9 (D5(D5(D1 (D6(D1(D5
+    D_))))))))))))))))))))
+    
+instance Reifies B0 Int8 where reflect_ _ = inhabit 0
+instance Reifies B1 Int8 where reflect_ _ = inhabit 1
+instance (NatNE0_ x, NatLE (x:.B0) MaxBoundInt8)
+    => Reifies (x:.B0) Int8
+    where reflect_ p = inhabit $! 2 * (choose . reflect . div2) p
+instance (NatNE0_ x, NatLE (x:.B1) MaxBoundInt8)
+    => Reifies (x:.B1) Int8
+    where reflect_ p = inhabit $! 2 * (choose . reflect . div2) p + 1
+
+instance Reifies B0 Int16 where reflect_ _ = inhabit 0
+instance Reifies B1 Int16 where reflect_ _ = inhabit 1
+instance (NatNE0_ x, NatLE (x:.B0) MaxBoundInt16)
+    => Reifies (x:.B0) Int16
+    where reflect_ p = inhabit $! 2 * (choose . reflect . div2) p
+instance (NatNE0_ x, NatLE (x:.B1) MaxBoundInt16)
+    => Reifies (x:.B1) Int16
+    where reflect_ p = inhabit $! 2 * (choose . reflect . div2) p + 1
+
+instance Reifies B0 Int32 where reflect_ _ = inhabit 0
+instance Reifies B1 Int32 where reflect_ _ = inhabit 1
+instance (NatNE0_ x, NatLE (x:.B0) MaxBoundInt32)
+    => Reifies (x:.B0) Int32
+    where reflect_ p = inhabit $! 2 * (choose . reflect . div2) p
+instance (NatNE0_ x, NatLE (x:.B1) MaxBoundInt32)
+    => Reifies (x:.B1) Int32
+    where reflect_ p = inhabit $! 2 * (choose . reflect . div2) p + 1
+
+instance Reifies B0 Int64 where reflect_ _ = inhabit 0
+instance Reifies B1 Int64 where reflect_ _ = inhabit 1
+instance (NatNE0_ x, NatLE (x:.B0) MaxBoundInt64)
+    => Reifies (x:.B0) Int64
+    where reflect_ p = inhabit $! 2 * (choose . reflect . div2) p
+instance (NatNE0_ x, NatLE (x:.B1) MaxBoundInt64)
+    => Reifies (x:.B1) Int64
+    where reflect_ p = inhabit $! 2 * (choose . reflect . div2) p + 1
+
+instance Reifies B0 Int where reflect_ _ = inhabit 0
+instance Reifies B1 Int where reflect_ _ = inhabit 1
+instance (NatNE0_ x, NatLE (x:.B0) MaxBoundInt)
+    => Reifies (x:.B0) Int
+    where reflect_ p = inhabit $! 2 * (choose . reflect . div2) p
+instance (NatNE0_ x, NatLE (x:.B1) MaxBoundInt)
+    => Reifies (x:.B1) Int
+    where reflect_ p = inhabit $! 2 * (choose . reflect . div2) p + 1
+-}
 
 -- HACK: we can't actually monomorphize the input, given our use case.
 -- | Return a 'Proxy' for the floor of the input divided by 2. Using
@@ -366,7 +432,7 @@ assert_leq Proxy Proxy = ()
 -- tle61 = assert_leq nat8 (pred nat8) -- expected error
 
 -- | Assert that @x < y@. This is just a shorthand for @x <= pred y@.
-class       (Nat_ x, NatNE0_ y) => NatLT x y
+class        (Nat_ x, NatNE0_ y) => NatLT x y
 instance (Succ y' y, NatLE x y') => NatLT x y
 
 
@@ -402,11 +468,12 @@ min _ _ = Proxy
 
 
 ----------------------------------------------------------------
--- TODO: should we offer @((floor.). div)@ and @((ceiling.). div)@ ?
+-- TODO: should we offer @((floor.). div)@, @((ceiling.). div)@, @divMod@ ?
 
 
--- | Assert that @x * y == z@ where @x > 0@; by structural induction on the first argument.
-class (NatNE0_ x, Nat_ y, Nat_ z) => Mul_ x y z | x y -> z, x z -> y
+-- | Assert that @x * y == z@ where @x > 0@; by structural induction
+-- on the first argument.
+class    (NatNE0_ x, Nat_ y, Nat_ z) => Mul_ x y z | x y -> z, x z -> y
 instance Nat_ y                      => Mul_ B1 y y
 instance (Mul_ x y zh, Snoc zh B0 z) => Mul_ (x:.B0) y z
 instance (Mul_F x y z, Mul_B x y z)  => Mul_ (x:.B1) y z
@@ -466,6 +533,7 @@ div _ _ = Proxy
 
 ----------------------------------------------------------------
 -- TODO: should we offer @(floor . logBase 2)@ and @(ceiling . logBase 2)@ ?
+-- TODO: general exponentiation/logarithm
 
 
 -- | Power-of-two exponentiation\/logarithm relation. Modes:
