@@ -211,7 +211,7 @@ newtype Exists f = Exists (forall r. (forall a. f a -> r) -> r)
 -- | Hide the fact that @a@ is the particular type satisfying the
 -- predicate @f@.
 exists :: f a -> Exists f
-exists x = Exists (\f -> f x)
+exists x = Exists (\k -> k x)
 {-# INLINE exists #-}
 
 
@@ -228,6 +228,9 @@ runExists (Exists f) = f
 mapExists :: (forall a. f a -> g a) -> Exists f -> Exists g
 mapExists eta (Exists f) = f (exists . eta)
 {-# INLINE mapExists #-}
+-- A less eager version is @Exists(\k -> f (k . eta))@ which is not
+-- strictly identical to the version above because it swaps the
+-- @Exists$\k->@ and @f$\x->@ components.
 
 
 -- | Bind for the 'Exists' monad. This is just a type-restricted
