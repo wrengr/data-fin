@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren ng thornton <wren@community.haskell.org>    ~ 2013.01.05
+-- wren ng thornton <wren@community.haskell.org>    ~ 2013.03.12
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -47,13 +47,14 @@ Flag splitBase
 Library
     Hs-Source-Dirs:    src
     Exposed-Modules:   Data.Number.Fin
-                     , Data.Number.Fin.TyInteger
+                     -- Data.Number.Fin.TyInteger
                      , Data.Number.Fin.TyBinary
                      , Data.Number.Fin.TyDecimal
                      , Data.Reflection.OfType
                      -- TODO: SafeEnum needs to be moved upstream
                      , Prelude.SafeEnum
                      , Data.Number.CalkinWilf
+    Other-Modules:     Data.Number.Fin.TyOrdering
     
     Build-Depends:     tagged         >= 0.2.3   && < 0.5
                      , reflection     >= 1.1.6   && < 1.2

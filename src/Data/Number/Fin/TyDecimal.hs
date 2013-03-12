@@ -75,7 +75,7 @@ module Data.Number.Fin.TyDecimal
     -- ** addition\/subtraction
     , Add, add, minus, subtract
     -- ** comparison
-    , Compare, compare, NatLE, NatLT, assert_leq, min, max
+    , Compare, compare, NatLE, NatLT, assert_NatLE, min, max
     {-
     -- ** multiplication\/division
     , Mul, mul, div, div10 -- mul10 ?
@@ -90,6 +90,7 @@ import Prelude hiding  (succ, pred, subtract, compare, div, gcd, max, min)
 import Data.Typeable   (Typeable)
 import Data.Proxy      (Proxy(Proxy))
 import Data.Reflection (Reifies(reflect))
+import Data.Number.Fin.TyOrdering
 ----------------------------------------------------------------
 
 -- | The digit 0.
@@ -124,9 +125,9 @@ infixl 5 :.
 
 -- | Is @n@ a well-formed type of kind @Nat@? The only well-formed
 -- types of kind @Nat@ are type-level natural numbers in structurally
--- little-endian binary.
+-- little-endian decimal.
 --
--- The hidden type class @Nat_ n@ entails @Reifies n Integer@.
+-- The hidden type class @(Nat_ n)@ entails @(Reifies n Integer)@.
 class    Nat_ n => Nat n
 instance Nat_ n => Nat n -- this instance is "undecidable"
 
@@ -134,9 +135,10 @@ instance Nat_ n => Nat n -- this instance is "undecidable"
 -- | Is @n@ a well-formed type of kind @NatNE0@? The only well-formed
 -- types of kind @NatNE0@ are the non-zero well-formed types of
 -- kind @Nat@;, i.e., the type-level whole numbers in structurally
--- little-endian binary.
+-- little-endian decimal.
 --
--- The hidden type class @NatNE0_ n@ entails @Nat_ n@ and @Reifies n Integer@.
+-- The hidden type class @(NatNE0_ n)@ entails @(Nat_ n)@ and
+-- @(Reifies n Integer)@.
 class    NatNE0_ n => NatNE0 n
 instance NatNE0_ n => NatNE0 n -- this instance is "undecidable"
 
@@ -280,8 +282,8 @@ type MaxBoundWord64 =
 -- | The successor\/predecessor relation; by structural induction
 -- on the first argument. Modes:
 --
--- > Succ x (succ x)
--- > Succ (pred y) y
+-- > Succ x (succ x)  -- i.e., given x, return the successor of x
+-- > Succ (pred y) y  -- i.e., given y, return the predecessor of y
 --
 class (Nat_ x, NatNE0_ y) => Succ x y | x -> y, y -> x
 instance                               Succ D0      D1
@@ -318,7 +320,7 @@ pred _ = Proxy
 -- | Assert @10*x + d == y@ where @d@ is a decimal digit and both @x@
 -- and @y@ are decimal numbers. @x@ may be zero. Essentially, this
 -- is the general, non-structural, constructor\/deconstructor of a
--- binary number. This is like the assertion @x:.d ~ y@ except that
+-- decimal number. This is like the assertion @x:.d ~ y@ except that
 -- we trim leading zeros of @y@ in order to ensure that it is
 -- well-formed.
 class (Digit_ d, Nat_ x, Nat_ y) => Snoc x d y | x d -> y, y -> x d
@@ -348,7 +350,7 @@ instance (Digit_ d', Nat_ (x:.d), Nat_ (x:.d:.d')) => Snoc (x:.d) d' (x:.d:.d')
 -- the first argument. Modes:
 --
 -- > Add_ x y (x+y)
--- > Add_ x (z-x) z -- when it's defined.
+-- > Add_ x (z-x) z  -- when it's defined.
 --
 class (Nat_ x, Nat_ y, Nat_ z) => Add_ x y z | x y -> z, z x -> y
 instance (Nat_ y)                            => Add_ D0 y y
@@ -407,8 +409,8 @@ instance (NatNE0_ x, Nat_ z, Add_ x y' zh, Snoc y' dy y, Add_ D9 (zh:.dy) z)
 -- | The addition relation with full dependencies. Modes:
 --
 -- > Add x y (x+y)
--- > Add x (z-x) z -- when it's defined.
--- > Add (z-y) y z -- when it's defined.
+-- > Add x (z-x) z  -- when it's defined.
+-- > Add (z-y) y z  -- when it's defined.
 --
 class    (Add_ x y z, Add_ y x z) => Add x y z | x y -> z, z x -> y, z y -> x
 instance (Add_ x y z, Add_ y x z) => Add x y z
@@ -429,23 +431,6 @@ subtract _ _ = Proxy
 
 ----------------------------------------------------------------
 -- Equality and order: the comparison relation
-data LT_
-data EQ_
-data GT_
-
-instance Reifies LT_ Ordering where reflect _ = LT 
-instance Reifies EQ_ Ordering where reflect _ = EQ 
-instance Reifies GT_ Ordering where reflect _ = GT 
-
-
--- | Compose comparison relations. Perform the first comparison,
--- and if it's not definitive, then fall through to perform the
--- second comparison.
-class    NCS r1 r2 r3 | r1 r2 -> r3
-instance NCS EQ_ r r
-instance NCS GT_ r GT_
-instance NCS LT_ r LT_
-
 
 -- | Assert that the comparison relation @r@ (@LT_@, @EQ_@, or
 -- @GT_@) holds between @x@ and @y@; by structural induction on the
@@ -755,8 +740,8 @@ instance (NatNE0_ x, NatNE0_ y, NatLE x y)       => NatLE (x:.D9) (y:.D9)
 
 
 -- | N.B., this will be ill-typed if @x@ is greater than @y@.
-assert_leq :: NatLE x y => Proxy x -> Proxy y -> ()
-assert_leq Proxy Proxy = ()
+assert_NatLE :: NatLE x y => Proxy x -> Proxy y -> ()
+assert_NatLE Proxy Proxy = ()
 
 
 -- | Assert that @x < y@. This is just a shorthand for @x <= pred y@.

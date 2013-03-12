@@ -10,7 +10,7 @@
            , TypeOperators
            #-}
 ----------------------------------------------------------------
---                                                    2013.01.06
+--                                                    2013.03.12
 -- |
 -- Module      :  Data.Number.Fin.TyBinary
 -- Copyright   :  2012--2013 wren ng thornton,
@@ -67,7 +67,7 @@ module Data.Number.Fin.TyBinary
     -- ** addition\/subtraction
     , Add, add, minus, subtract
     -- ** comparison
-    , Compare, compare, NatLE, NatLT, assert_leq, min, max
+    , Compare, compare, NatLE, NatLT, assert_NatLE, min, max
     -- ** multiplication\/division
     , Mul, mul, div, div2 -- mul2 ?
     -- ** exponentiation\/logarithm
@@ -80,6 +80,7 @@ import Prelude hiding  (succ, pred, subtract, compare, div, gcd, max, min)
 import Data.Typeable   (Typeable)
 import Data.Proxy      (Proxy(Proxy))
 import Data.Reflection (Reifies(reflect))
+import Data.Number.Fin.TyOrdering
 ----------------------------------------------------------------
 
 {-
@@ -273,8 +274,8 @@ nat9 :: Proxy Nat9; nat9 = Proxy
 -- | The successor\/predecessor relation; by structural induction
 -- on the first argument. Modes:
 --
--- > Succ x (succ x)
--- > Succ (pred y) y
+-- > Succ x (succ x)  -- i.e., given x, return the successor of x
+-- > Succ (pred y) y  -- i.e., given y, return the predecessor of y
 --
 class (Nat_ x, NatNE0_ y) => Succ x y | x -> y, y -> x
 instance                               Succ B0      B1
@@ -312,7 +313,7 @@ instance (Digit_ d', Nat_ (x:.d), Nat_ (x:.d:.d')) => Snoc (x:.d) d' (x:.d:.d')
 -- the first argument. Modes:
 --
 -- > Add_ x y (x+y)
--- > Add_ x (z-x) z -- when it's defined.
+-- > Add_ x (z-x) z  -- when it's defined.
 --
 class (Nat_ x, Nat_ y, Nat_ z) => Add_ x y z | x y -> z, z x -> y
 instance Nat_ y   => Add_ B0 y y
@@ -326,8 +327,8 @@ instance (NatNE0_ x, Nat_ z, Add_ x y' zh, Snoc y' dy y, Succ (zh:.dy) z)
 -- | The addition relation with full dependencies. Modes:
 --
 -- > Add x y (x+y)
--- > Add x (z-x) z -- when it's defined.
--- > Add (z-y) y z -- when it's defined.
+-- > Add x (z-x) z  -- when it's defined.
+-- > Add (z-y) y z  -- when it's defined.
 --
 class    (Add_ x y z, Add_ y x z) => Add x y z | x y -> z, z x -> y, z y -> x
 instance (Add_ x y z, Add_ y x z) => Add x y z
@@ -356,23 +357,6 @@ subtract _ _ = Proxy
 
 ----------------------------------------------------------------
 -- Equality and order: the comparison relation
-data LT_
-data EQ_
-data GT_
-
-instance Reifies LT_ Ordering where reflect _ = LT 
-instance Reifies EQ_ Ordering where reflect _ = EQ 
-instance Reifies GT_ Ordering where reflect _ = GT 
-
-
--- | Compose comparison relations. Perform the first comparison,
--- and if it's not definitive, then fall through to perform the
--- second comparison.
-class    NCS r1 r2 r3 | r1 r2 -> r3
-instance NCS EQ_ r r
-instance NCS GT_ r GT_
-instance NCS LT_ r LT_
-
 
 -- | Assert that the comparison relation @r@ (@LT_@, @EQ_@, or
 -- @GT_@) holds between @x@ and @y@; by structural induction on the
@@ -419,17 +403,17 @@ instance (NatNE0_ x, NatNE0_ y, NatLE x y)       => NatLE (x:.B0) (y:.B1)
 instance (NatNE0_ x, NatNE0_ y, Compare x y LT_) => NatLE (x:.B1) (y:.B0)
 
 -- | N.B., this will be ill-typed if @x@ is greater than @y@.
-assert_leq :: NatLE x y => Proxy x -> Proxy y -> ()
-assert_leq Proxy Proxy = ()
+assert_NatLE :: NatLE x y => Proxy x -> Proxy y -> ()
+assert_NatLE Proxy Proxy = ()
 
--- tle1  = assert_leq nat0 nat0
--- tle2  = assert_leq nat8 nat8
--- tle3  = assert_leq nat4 nat8
--- tle31 = assert_leq nat8 nat4 -- expected error
--- tle4  = assert_leq nat8 (succ nat8)
--- tle5  = assert_leq (pred nat8) (succ nat8)
--- tle6  = assert_leq (pred nat8) nat8
--- tle61 = assert_leq nat8 (pred nat8) -- expected error
+-- tle1  = assert_NatLE nat0 nat0
+-- tle2  = assert_NatLE nat8 nat8
+-- tle3  = assert_NatLE nat4 nat8
+-- tle31 = assert_NatLE nat8 nat4 -- expected error
+-- tle4  = assert_NatLE nat8 (succ nat8)
+-- tle5  = assert_NatLE (pred nat8) (succ nat8)
+-- tle6  = assert_NatLE (pred nat8) nat8
+-- tle61 = assert_NatLE nat8 (pred nat8) -- expected error
 
 -- | Assert that @x < y@. This is just a shorthand for @x <= pred y@.
 class        (Nat_ x, NatNE0_ y) => NatLT x y
@@ -507,8 +491,8 @@ instance (Snoc y B1 yt, Mul_B x y z', Add x z' z, NatNE0_ x, NatNE0_ z)
 -- | The multiplication relation with full dependencies. Modes:
 --
 -- > Mul x y (x*y)
--- > Mul x (z/x) z -- when it's defined.
--- > Mul (z/y) y z -- when it's defined.
+-- > Mul x (z/x) z  -- when it's defined.
+-- > Mul (z/y) y z  -- when it's defined.
 --
 class    (Mul_ x y z, Mul_ y x z) => Mul x y z | x y -> z, x z -> y, y z -> x
 instance (Mul_ x y z, Mul_ y x z) => Mul x y z
@@ -539,7 +523,7 @@ div _ _ = Proxy
 -- | Power-of-two exponentiation\/logarithm relation. Modes:
 --
 -- > Exp2 x (2^x)
--- > Exp2 (logBase 2 y) y -- when it's defined.
+-- > Exp2 (logBase 2 y) y  -- when it's defined.
 --
 class (Nat_ x, NatNE0_ y) => Exp2 x y | x -> y, y -> x
 instance                                      Exp2 B0 B1
