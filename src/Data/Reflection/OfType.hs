@@ -4,11 +4,11 @@
            , MultiParamTypeClasses
            #-}
 ----------------------------------------------------------------
---                                                    2013.01.20
+--                                                    2013.03.12
 -- |
 -- Module      :  Data.Reflection.OfType
 -- Copyright   :  2012--2013 wren ng thornton,
---                2009-2012 Edward Kmett,
+--                2009--2012 Edward Kmett,
 --                2012 Elliott Hird,
 --                2004 Oleg Kiselyov and Chung-chieh Shan
 -- License     :  BSD3
@@ -59,6 +59,7 @@ module Data.Reflection.OfType
     -- * Reification
     , Reflects(..)
     , reify
+    , reify'
     -- * Testing
     -- | These properties should always be true.
     , prop_reflectionsAreReified
@@ -429,9 +430,12 @@ class Reflects x a where
     reify_ :: a -> (Proxy x -> r) -> Maybe r
 
 
--- TODO: is this the type the most useful? or should we take @Proxy x@?
+-- TODO: is this the type the most useful for the default? or is reify' better?
 -- | Given some @y@, if @y@ is the reflection of @x@ at type @a@,
--- then return the proof that @x@ has type @a@.
+-- then return the proof that @x@ has type @a@. /N.B.,/ this function
+-- relies on the type context for specifying @x@, which may result
+-- in returning @Nothing@ when you don't want it to. In order to
+-- specify @x@ explicitly, see 'reify''.
 reify :: forall a x. Reflects x a => a -> Maybe (OfType a x)
 reify x = reify_ x fakeReflect
     where
@@ -439,6 +443,22 @@ reify x = reify_ x fakeReflect
     fakeReflect :: Proxy x -> OfType a x
     fakeReflect _ = OfType x
 {-# INLINE reify #-}
+
+
+-- | Given some @y@, if @y@ is the reflection of @x@ at type @a@,
+-- then return the proof that @x@ has type @a@. This is a variant
+-- of 'reify' which allows explicitly specifying @x@ without a type
+-- signature. This can be helpful for ensuring that you get the
+-- answer you expect; though it also sort of defeats the purpose
+-- of reification, since you'd need to already know @x@ in order
+-- to use this function.
+reify' :: forall a x. Reflects x a => Proxy x -> a -> Maybe (OfType a x)
+reify' _ x = reify_ x fakeReflect
+    where
+    -- HACK: Must float out in order to propegate the return @x@ to @reify_@
+    fakeReflect :: Proxy x -> OfType a x
+    fakeReflect _ = OfType x
+{-# INLINE reify' #-}
 
 
 ----------------------------------------------------------------
