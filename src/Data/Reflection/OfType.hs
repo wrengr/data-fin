@@ -59,7 +59,7 @@ module Data.Reflection.OfType
     -- * Reification
     , Reflects(..)
     , reify
-    , reify'
+    , reifyCPS
     -- * Testing
     -- | These properties should always be true.
     , prop_reflectionsAreReified
@@ -408,6 +408,7 @@ reflect p = OfType (choose (reflect_ p))
 {-# INLINE reflect #-}
 
 
+-- TODO: better name...
 -- | Given a proxy for proof that @x@ has type @a@, return the
 -- actual proof. This is a variant of 'reflect' which is occasionally
 -- useful for specifying the type @a@.
@@ -430,7 +431,7 @@ class Reflects x a where
     reify_ :: a -> (Proxy x -> r) -> Maybe r
 
 
--- TODO: is this the type the most useful for the default? or is reify' better?
+-- TODO: is this the type the most useful for the default? or would it be better to pass a @Proxy x@?
 -- | Given some @y@, if @y@ is the reflection of @x@ at type @a@,
 -- then return the proof that @x@ has type @a@. /N.B.,/ this function
 -- relies on the type context for specifying @x@, which may result
@@ -445,20 +446,17 @@ reify x = reify_ x fakeReflect
 {-# INLINE reify #-}
 
 
--- | Given some @y@, if @y@ is the reflection of @x@ at type @a@,
--- then return the proof that @x@ has type @a@. This is a variant
--- of 'reify' which allows explicitly specifying @x@ without a type
--- signature. This can be helpful for ensuring that you get the
--- answer you expect; though it also sort of defeats the purpose
--- of reification, since you'd need to already know @x@ in order
--- to use this function.
-reify' :: forall a x. Reflects x a => Proxy x -> a -> Maybe (OfType a x)
-reify' _ x = reify_ x fakeReflect
-    where
-    -- HACK: Must float out in order to propegate the return @x@ to @reify_@
-    fakeReflect :: Proxy x -> OfType a x
-    fakeReflect _ = OfType x
-{-# INLINE reify' #-}
+-- | Given some @y@, assert the possibility that there exists a
+-- type @x@ which reifies @y@. The actual @x@ is a skolem variable
+-- which is hidden under an existential quantifier.
+--
+-- This is just a shorthand for reducing the newtype noise of:
+--
+-- > runInhabited . inhabit
+--
+reifyCPS :: a -> (forall x. OfType a x -> r) -> r
+reifyCPS x k = k (OfType x)
+{-# INLINE reifyCPS #-}
 
 
 ----------------------------------------------------------------

@@ -3,11 +3,13 @@
            , GeneralizedNewtypeDeriving
            , DeriveDataTypeable
            , MultiParamTypeClasses
+           , FlexibleContexts
+           , UndecidableInstances
            , CPP
            , Rank2Types
            #-}
 ----------------------------------------------------------------
---                                                    2013.01.04
+--                                                    2013.03.12
 -- |
 -- Module      :  Data.Number.Fin
 -- Copyright   :  2012--2013 wren ng thornton
@@ -24,16 +26,21 @@ module Data.Number.Fin
     (
     -- * @Fin@, finite sets of natural numbers
       Fin()
+    -- ** Showing types
     , showFinType
     , showsFinType
+    -- ** Constructors and destructors
     , toFin
     , toFinCPS
     , fromFin
-    -- predView
-    -- weaken
+    -- ** Views and conversions
+    , maxView
+    , weaken
     , weakenLE
-    -- widen
+    , predView
+    , widen
     , widenLE
+    -- ** Convenience functions
     , minBoundOf
     , maxBoundOf
     -- ** Shorthands for some small numbers.
@@ -51,9 +58,11 @@ module Data.Number.Fin
 
 import qualified Prelude.SafeEnum as SE
 import Data.Ix
-import Data.Number.Fin.TyInteger
-import Data.Typeable (Typeable)
-import Control.Monad (liftM)
+import Data.Number.Fin.TyDecimal (Nat, Succ, NatLE)
+import Data.Typeable   (Typeable)
+import Data.Proxy      (Proxy(Proxy))
+import Data.Reflection (Reifies(reflect), reify)
+import Control.Monad   (liftM)
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts (build)
 #endif
@@ -184,7 +193,7 @@ instance Reifies s XRepr => Reifies (X9 s) XRepr where
 -- plain integers.
 newtype Fin n = Fin Int
     deriving (Show, Eq, Ord, Typeable)
-    -- BUG? derived instances don't get ReflectNum constraints...
+    -- BUG? derived instances don't get Reifies constraints...
 
 {-
 -- Some fusion rules for treating newtypes like 'id', or as close
@@ -201,8 +210,10 @@ newtype Fin n = Fin Int
     #-}
 -}
 
+{-
 -- TODO: don't re-use the LE class for this. Define a new class for one domain being smaller than another...
-instance (ReflectNum m, ReflectNum n, LE m n) => LE (Fin m) (Fin n)
+instance (Nat m, Nat n, LE m n) => LE (Fin m) (Fin n)
+-}
 
 -- TODO: f :: Maybe (Fin n)          <-> Fin (Succ n) -- both obvious versions
     -- TODO: define @Surely a = Only a | Everything@ instead of reusing Maybe?
@@ -240,24 +251,24 @@ instance Exception FinException
 
 -- | Like 'show', except it shows the type itself instead of the
 -- value.
-showFinType :: ReflectNum n => Fin n -> String
+showFinType :: Nat n => Fin n -> String
 showFinType x = showsFinType x []
 {-# INLINE showFinType #-}
 
 
 -- N.B., we use @showsPrec 11@ rather than 'shows' to add parentheses
--- when @n@ is negative. And we use 'toInteger' just in case @n-1==maxBound@.
--- BUG: if @n-1 > maxBound@ we still get overflow to negatives...
+-- just in case @n@ is negative.
+-- BUG: if @n > maxBound@ we still get overflow to negatives...
 -- | Like 'shows', except it shows the type itself instead of the
 -- value.
-showsFinType :: ReflectNum n => Fin n -> ShowS
-showsFinType x = ("Fin "++) . showsPrec 11 (1 + toInteger (maxBoundOf x))
--- TODO: would inlining ensure compile-time reflection?
--- {-# INLINE showsFinType #-}
+showsFinType :: forall n. Nat n => Fin n -> ShowS
+showsFinType _ = ("Fin "++) . showsPrec 11 (reflect (Proxy :: Proxy n))
+-- TODO: is that enough to ensure we can reflect at compile-time?
+{-# INLINE showsFinType #-}
 
 
 -- BUG: this only reads numeric literals, not ("Fin "++show n) and equivalent things...
-instance ReflectNum n => Read (Fin n) where
+instance Nat n => Read (Fin n) where
 #ifdef __GLASGOW_HASKELL__
     readsPrec p str = build (\cons nil ->
         let step (i,rest) xs = maybe xs (\x -> cons (x,rest) xs) (toFin i)
@@ -278,16 +289,16 @@ instance ReflectNum n => Read (Fin n) where
 
 
 ----------------------------------------------------------------
-instance ReflectNum n => Bounded (Fin n) where
+instance Nat n => Bounded (Fin n) where
     minBound = Fin 0
     {-# INLINE minBound #-}
-    maxBound = Fin (reflectNum (__ :: n) - 1)
+    maxBound = Fin (reflect (Proxy :: Proxy n) - 1)
     {-# INLINE maxBound #-}
 
 
 -- | Return the 'minBound' of @Fin n@ as a plain integer. This is
 -- always zero, but is provided for symmetry with 'maxBoundOf'.
-minBoundOf :: ReflectNum n => Fin n -> Int
+minBoundOf :: Nat n => Fin n -> Int
 minBoundOf _ = 0
 {-# INLINE minBoundOf #-}
 
@@ -295,16 +306,15 @@ minBoundOf _ = 0
 -- | Return the 'maxBound' of @Fin n@ as a plain integer. This is
 -- always @n-1@, but it's helpful because you may not know what @n@
 -- is at the time.
-maxBoundOf :: ReflectNum n => Fin n -> Int
-maxBoundOf x =
-    case maxBound `asTypeOf` x of
-    Fin i -> i
+maxBoundOf :: forall n. Nat n => Fin n -> Int
+maxBoundOf _ = reflect (Proxy :: Proxy n) - 1
+-- TODO: is that enough to ensure we can reflect at compile-time?
 {-# INLINE maxBoundOf #-}
 
 
 -- N.B., we cannot derive Enum, since that would inject invalid numbers!
 -- N.B., we're using partial functions, because H98 requires it!
-instance ReflectNum n => Enum (Fin n) where
+instance Nat n => Enum (Fin n) where
     succ x =
         case SE.succ x of
         Just y  -> y
@@ -339,15 +349,15 @@ instance ReflectNum n => Enum (Fin n) where
     {-# INLINE enumFromThenTo #-}
 
 {-
-_pred_succ :: ReflectNum n => Fin n -> Fin n
+_pred_succ :: Nat n => Fin n -> Fin n
 _pred_succ x = if x == maxBound then _succ_maxBound "Fin" else x
 {-# INLINE _pred_succ #-}
 
-_succ_pred :: ReflectNum n => Fin n -> Fin n
+_succ_pred :: Nat n => Fin n -> Fin n
 _succ_pred x = if x == minBound then _pred_minBound "Fin" else x
 {-# INLINE _succ_pred #-}
 
--- BUG: how can we introduce the (ReflectNum n) constraint? Floating out the RHSs to give them signatures doesn't help.
+-- BUG: how can we introduce the (Nat n) constraint? Floating out the RHSs to give them signatures doesn't help.
 {-# RULES
 "pred (succ x) :: Fin n"         forall x. pred (succ x) = _pred_succ x
 "pred . succ :: Fin n -> Fin n"            pred . succ   = _pred_succ
@@ -357,7 +367,7 @@ _succ_pred x = if x == minBound then _pred_minBound "Fin" else x
     #-}
 -}
 
-instance ReflectNum n => SE.UpwardEnum (Fin n) where
+instance Nat n => SE.UpwardEnum (Fin n) where
     succ x@(Fin i)
         | x < maxBound = Just $! Fin (i + 1)
         | otherwise    = Nothing
@@ -369,7 +379,7 @@ instance ReflectNum n => SE.UpwardEnum (Fin n) where
     {-# INLINE enumFrom #-}
     {-# INLINE enumFromTo #-}
 
-instance ReflectNum n => SE.DownwardEnum (Fin n) where
+instance Nat n => SE.DownwardEnum (Fin n) where
     pred (Fin i)
         | 0 < i     = Just $! Fin (i - 1)
         | otherwise = Nothing
@@ -381,7 +391,7 @@ instance ReflectNum n => SE.DownwardEnum (Fin n) where
     {-# INLINE enumDownFrom #-}
     {-# INLINE enumDownFromTo #-}
     
-instance ReflectNum n => SE.Enum (Fin n) where
+instance Nat n => SE.Enum (Fin n) where
     toEnum i
         | 0 <= i && i <= maxBoundOf x = Just x
         | otherwise                   = Nothing
@@ -396,12 +406,8 @@ instance ReflectNum n => SE.Enum (Fin n) where
     {-# INLINE enumFromThenTo #-}
 
 
--- TODO: predView :: Fin n -> Maybe (Fin (Pred n))
--- TODO: wtf? <http://ncatlab.org/nlab/show/decalage>
-
-
 -- TODO: can we trust the validity of the input arguments?
-instance ReflectNum n => Ix (Fin n) where
+instance Nat n => Ix (Fin n) where
     index     (Fin i, Fin j) (Fin k) = index     (i,j) k
     range     (Fin i, Fin j)         = map Fin (range (i,j))
     inRange   (Fin i, Fin j) (Fin k) = inRange   (i,j) k
@@ -419,7 +425,7 @@ instance ReflectNum n => Ix (Fin n) where
 -- | A version of 'id' which checks that the argument is in fact
 -- valid for its type before returning it. Throws an exception if
 -- the @Fin n@ is invalid.
-check :: ReflectNum n => Fin n -> Fin n
+check :: Nat n => Fin n -> Fin n
 check x = x `checking` x
 {-# INLINE check #-}
 
@@ -428,29 +434,30 @@ check x = x `checking` x
 -- in fact valid for its type before returning the first argument.
 -- Throws an exception if the @Fin n@ is invalid. The name and
 -- argument ordering are indended for infix use.
-checking :: ReflectNum n => a -> Fin n -> a
+checking :: Nat n => a -> Fin n -> a
 checking a x
     | minBound <= x && x <= maxBound = a
     | otherwise                      = _checking_OOR x
-{-# INLINE checking #-} 
+{-# INLINE checking #-}
 
 
 -- TODO: use extensible-exceptions instead of 'error'
-_checking_OOR :: ReflectNum n => Fin n -> a
+_checking_OOR :: Nat n => Fin n -> a
 _checking_OOR x = error
     . ("The value "++)
-    . shows x 
-    . (" is out of bounds for "++) 
-    $ showFinType x
+    . shows x
+    . (" is out of bounds for "++)
+    . showsFinType x
+    $ ". This is a library error; contact the maintainer."
 
 
 -- | Extract the value of a @Fin n@.
 --
--- N.B., this function will throw an exception if, somehow, the
--- @Fin n@ value was constructed invalidly. However, this should
+-- /N.B.,/ if somehow the @Fin n@ value was constructed invalidly,
+-- then this function will throw an exception. However, this should
 -- /never/ happen. If it does, contact the maintainer since this
 -- indicates a bug\/insecurity in this library.
-fromFin :: ReflectNum n => Fin n -> Int
+fromFin :: Nat n => Fin n -> Int
 fromFin x@(Fin i) = i `checking` x
 {-# INLINE fromFin #-}
 
@@ -458,7 +465,7 @@ fromFin x@(Fin i) = i `checking` x
 -- | Safely embed a number into @Fin n@. Use of this function will
 -- generally require an explicit type signature in order to know
 -- which @n@ to use.
-toFin :: forall n. ReflectNum n => Int -> Maybe (Fin n)
+toFin :: forall n. Nat n => Int -> Maybe (Fin n)
 toFin i
     | 0 <= i && i <= maxBoundOf x = Just x
     | otherwise                   = Nothing
@@ -476,15 +483,15 @@ toFin i
 -- @i@ is a valid element of @Fin n@ then we will pass it to the
 -- continuation @k@ and wrap the result in @Just@; otherwise we
 -- return @Nothing@.
-toFinCPS :: Int -> (forall n. ReflectNum n => Fin n -> r) -> Int -> Maybe r
+toFinCPS :: Int -> (forall n. Reifies n Int => Fin n -> r) -> Int -> Maybe r
 toFinCPS n k i
-    | 0 <= i && i < n = Just (reifyInt n $ \(_::n) -> k (Fin i :: Fin n))
+    | 0 <= i && i < n = Just (reify n $ \(_ :: Proxy n) -> k (Fin i :: Fin n))
     | otherwise       = Nothing
 {-# INLINE toFinCPS #-}
 
 
 ----------------------------------------------------------------
-instance ReflectNum n => QC.Arbitrary (Fin n) where
+instance Nat n => QC.Arbitrary (Fin n) where
     shrink = tail . SE.enumDownFrom
     arbitrary
         | x >= 0    = Fin `liftM` QC.choose (0,x)
@@ -499,11 +506,11 @@ instance ReflectNum n => QC.Arbitrary (Fin n) where
         
 
 
-instance ReflectNum n => QC.CoArbitrary (Fin n) where
+instance Nat n => QC.CoArbitrary (Fin n) where
     coarbitrary (Fin n) = QC.variant n
 
 
-instance ReflectNum n => SC.Serial (Fin n) where
+instance Nat n => SC.Serial (Fin n) where
     series d
         | d < 0     = [] -- paranoia.
         | otherwise =
@@ -520,64 +527,121 @@ instance ReflectNum n => SC.Serial (Fin n) where
         , f <- SC.alts1 rs d
         ]
 
-instance ReflectNum n => LSC.Serial (Fin n) where
+instance Nat n => LSC.Serial (Fin n) where
     series = LSC.drawnFrom . SC.series
 
-----------------------------------------------------------------
-{-
--- This type-restricted version is a la Agda.
--- TODO: needs type-level function Succ.
--- | Embed finite domains into larger ones.
-weaken :: Fin n -> Fin (Succ n)
-weaken (Fin x) = Fin x
--}
 
--- | Embed finite domains into larger ones, keeping the same position
--- relative to 'minBound'. That is:
+----------------------------------------------------------------
+-- TODO: wtf? <http://ncatlab.org/nlab/show/decalage>
+
+
+{- -- Agda's version:
+data MaxView {n : Nat} : Fin (suc n) -> Set where
+  theMax :                MaxView (fromNat n)
+  notMax : (i : Fin n) -> MaxView (weaken i)
+
+maxView : {n : Nat} (i : Fin (suc n)) -> MaxView i
+maxView {zero}  zero = theMax
+maxView {zero}  (suc ())
+maxView {suc n} zero = notMax zero
+maxView {suc n} (suc i) with maxView i
+maxView {suc n} (suc .(fromNat n)) | theMax   = theMax
+maxView {suc n} (suc .(weaken i))  | notMax i = notMax (suc i)
+-}
+-- | The maximum-element view. This strengthens the type by removing
+-- the maximum element:
 --
--- > fromFin x == fromFin (weakenLE x)
+-- > maxView maxBound == Nothing
+-- > maxView x        == Just (coerce x)
+--
+-- The opposite of this function is 'weaken'.
+maxView :: Succ m n => Fin n -> Maybe (Fin m)
+maxView x@(Fin i)
+    | i >= maxBoundOf x = Nothing
+    | otherwise         = Just (Fin i)
+{-# INLINE maxView #-}
+
+
+-- This type-restricted version is a~la Agda.
+-- | Embed a finite domain into the next larger one, keeping the
+-- same position relative to 'minBound'. That is:
+--
+-- > fromFin (weaken x) == fromFin x
+--
+-- The opposite of this function is 'maxView'.
+weaken :: Succ m n => Fin m -> Fin n
+weaken (Fin i) = Fin i
+{-# INLINE weaken #-}
+
+
+-- | Embed a finite domain into any larger one, keeping the same
+-- position relative to 'minBound'. That is:
+--
+-- > fromFin (weakenLE x) == fromFin x
 --
 -- Use of this function will generally require an explicit type
 -- signature in order to know which @n@ to use.
-weakenLE :: (ReflectNum n, ReflectNum m, LE m n) => Fin m -> Fin n
+weakenLE :: NatLE m n => Fin m -> Fin n
 weakenLE (Fin i) = Fin i
 {-# INLINE weakenLE #-}
 
 
--- TODO: widen :: Fin n -> Fin (Succ n)
-
-
--- | Embed finite domains into larger ones, keeping the same position
--- relative to 'maxBound'. That is:
+-- | The predecessor view. This strengthens the type by shifting
+-- everything down by one:
 --
--- > maxBoundOf x - fromFin x == maxBoundOf y - fromFin y
--- >     where y = weakenLE x
+-- > predView 0 == Nothing
+-- > predView x == Just (coerce $ x-1)
+--
+-- The opposite of this function is 'widen'.
+predView :: Succ m n => Fin n -> Maybe (Fin m)
+predView (Fin i)
+    | i <= 0    = Nothing
+    | otherwise = Just $! Fin (i-1)
+{-# INLINE predView #-}
+
+
+-- | Embed a finite domain into the next larger one, keeping the
+-- same position relative to 'maxBound'. That is:
+--
+-- > fromFin (widen x) == 1 + fromFin x
+--
+-- The opposite of this function is 'predView'.
+widen :: Succ m n => Fin m -> Fin n
+widen (Fin i) = Fin (i+1)
+-- TODO: verify that the above simplification is guaranteed correct/safe
+{-# INLINE widen #-}
+
+
+-- | Embed a finite domain into any larger one, keeping the same
+-- position relative to 'maxBound'. That is:
+--
+-- > maxBoundOf y - fromFin y == maxBoundOf x - fromFin x
+-- >     where y = widenLE x
 --
 -- Use of this function will generally require an explicit type
 -- signature in order to know which @n@ to use.
-widenLE :: (ReflectNum m, ReflectNum n, LE m n) => Fin m -> Fin n
+widenLE :: NatLE m n => Fin m -> Fin n
 widenLE x@(Fin i) = y
     where
     y = Fin (maxBoundOf y - maxBoundOf x + i)
 {-# INLINE widenLE #-}
 
 
-{- -- TODO: define Plus so that we can implement the monoidal structure of the (skeleton of the) augmented simplex category <http://ncatlab.org/nlab/show/simplex+category>:
+{- -- TODO: define Plus (actually, just use Add...) so that we can implement the monoidal structure of the (skeleton of the) augmented simplex category <http://ncatlab.org/nlab/show/simplex+category>:
 
 -- | An optimization of 'widenLE'.
-widenPlus :: (ReflectNum m, ReflectNum n) => Fin n -> Fin (Plus m n)
+widenPlus :: (Nat m, Nat n) => Fin n -> Fin (Plus m n)
 widenPlus y = Fin (maxBoundOf (__::Fin m) + fromFin y)
 
 
-plus :: (ReflectNum m, ReflectNum n)
-     => Either (Fin m) (Fin n) -> Fin (Plus m n)
+plus :: Add m n o => Either (Fin m) (Fin n) -> Fin o
 plus = either weakenLE widenPlus
 
 
-fplus :: (ReflectNum m, ReflectNum n, ReflectNum m', ReflectNum n')
+fplus :: (Add m n o, Add m' n' o')
        => (Fin m -> Fin m')
        -> (Fin n -> Fin n')
-       -> Fin (Plus m n) -> Fin (Plus m' n')
+       -> Fin o -> Fin o'
 fplus f g (Fin i)
     | i <= x    = weakenLE  (f (Fin i))
     | otherwise = widenPlus (g $! Fin (i-x))
@@ -585,8 +649,7 @@ fplus f g (Fin i)
     x = maxBoundOf (__ :: Fin m)
 
 
-unplus :: (ReflectNum m, ReflectNum n)
-       => Fin (Plus m n) -> Either (Fin m) (Fin n)
+unplus :: Add m n o => Fin o -> Either (Fin m) (Fin n)
 unplus (Fin i)
     | i <= x    = Left (Fin i)
     | otherwise = Right $! Fin (i-x)
@@ -596,20 +659,6 @@ unplus (Fin i)
 
 {-
 Agda also provides the following views:
-
--- A view telling you if a given element is the maximal one.
-data MaxView {n : Nat} : Fin (suc n) -> Set where
-  theMax : MaxView (fromNat n)
-  notMax : (i : Fin n) -> MaxView (weaken i)
-
-maxView : {n : Nat}(i : Fin (suc n)) -> MaxView i
-maxView {zero} zero = theMax
-maxView {zero} (suc ())
-maxView {suc n} zero = notMax zero
-maxView {suc n} (suc i) with maxView i
-maxView {suc n} (suc .(fromNat n)) | theMax   = theMax
-maxView {suc n} (suc .(weaken i))  | notMax i = notMax (suc i)
-
 
 -- ueh? this is just another way to test for n==0; why bother with this? The only possible use I could see is to say, hey I have an actual value of Fin n, therefore n can't be zero... but then if you had a purported value of Fin n and that wasn't the case, then you'd have a contradiction to work with, ne?
 -- The non zero view, which is used for defining compare...
