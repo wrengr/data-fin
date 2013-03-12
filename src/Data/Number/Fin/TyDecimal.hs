@@ -128,8 +128,8 @@ infixl 5 :.
 -- little-endian decimal.
 --
 -- The hidden type class @(Nat_ n)@ entails @(Reifies n Integer)@.
-class    Nat_ n => Nat n
-instance Nat_ n => Nat n -- this instance is "undecidable"
+class    (NatLE n MaxBoundInt32, Nat_ n) => Nat n
+instance (NatLE n MaxBoundInt32, Nat_ n) => Nat n -- this instance is "undecidable"
 
 
 -- | Is @n@ a well-formed type of kind @NatNE0@? The only well-formed
@@ -139,8 +139,8 @@ instance Nat_ n => Nat n -- this instance is "undecidable"
 --
 -- The hidden type class @(NatNE0_ n)@ entails @(Nat_ n)@ and
 -- @(Reifies n Integer)@.
-class    NatNE0_ n => NatNE0 n
-instance NatNE0_ n => NatNE0 n -- this instance is "undecidable"
+class    (NatLE n MaxBoundInt32, NatNE0_ n) => NatNE0 n
+instance (NatLE n MaxBoundInt32, NatNE0_ n) => NatNE0 n -- this instance is "undecidable"
 
 
 -- for internal use only.
@@ -157,7 +157,7 @@ instance Digit_ D8
 instance Digit_ D9
 
 -- for internal use only.
-class (Reifies n Integer, Nat_ n) => NatNE0_ n
+class (Reifies n Int, Nat_ n) => NatNE0_ n
 instance              NatNE0_ D1
 instance              NatNE0_ D2
 instance              NatNE0_ D3
@@ -179,7 +179,7 @@ instance NatNE0_ n => NatNE0_ (n:.D8)
 instance NatNE0_ n => NatNE0_ (n:.D9)
 
 -- for internal use only.
-class Reifies n Integer => Nat_ n
+class (Reifies n Int) => Nat_ n
 instance              Nat_ D0
 instance              Nat_ D1
 instance              Nat_ D2
@@ -203,35 +203,35 @@ instance NatNE0_ x => Nat_ (x:.D9)
 
 
 -- BUG: stack overflow issues, unlike the big-endian notation?
-instance Reifies D0 Integer where reflect _ = 0 
-instance Reifies D1 Integer where reflect _ = 1 
-instance Reifies D2 Integer where reflect _ = 2 
-instance Reifies D3 Integer where reflect _ = 3 
-instance Reifies D4 Integer where reflect _ = 4 
-instance Reifies D5 Integer where reflect _ = 5 
-instance Reifies D6 Integer where reflect _ = 6 
-instance Reifies D7 Integer where reflect _ = 7 
-instance Reifies D8 Integer where reflect _ = 8 
-instance Reifies D9 Integer where reflect _ = 9 
-instance NatNE0_ x => Reifies (x:.D0) Integer where
+instance Reifies D0 Int where reflect _ = 0 
+instance Reifies D1 Int where reflect _ = 1 
+instance Reifies D2 Int where reflect _ = 2 
+instance Reifies D3 Int where reflect _ = 3 
+instance Reifies D4 Int where reflect _ = 4 
+instance Reifies D5 Int where reflect _ = 5 
+instance Reifies D6 Int where reflect _ = 6 
+instance Reifies D7 Int where reflect _ = 7 
+instance Reifies D8 Int where reflect _ = 8 
+instance Reifies D9 Int where reflect _ = 9 
+instance NatNE0_ x => Reifies (x:.D0) Int where
     reflect p = 10 * reflect (div10 p)
-instance NatNE0_ x => Reifies (x:.D1) Integer where
+instance NatNE0_ x => Reifies (x:.D1) Int where
     reflect p = 10 * reflect (div10 p) + 1
-instance NatNE0_ x => Reifies (x:.D2) Integer where
+instance NatNE0_ x => Reifies (x:.D2) Int where
     reflect p = 10 * reflect (div10 p) + 2
-instance NatNE0_ x => Reifies (x:.D3) Integer where
+instance NatNE0_ x => Reifies (x:.D3) Int where
     reflect p = 10 * reflect (div10 p) + 3
-instance NatNE0_ x => Reifies (x:.D4) Integer where
+instance NatNE0_ x => Reifies (x:.D4) Int where
     reflect p = 10 * reflect (div10 p) + 4
-instance NatNE0_ x => Reifies (x:.D5) Integer where
+instance NatNE0_ x => Reifies (x:.D5) Int where
     reflect p = 10 * reflect (div10 p) + 5
-instance NatNE0_ x => Reifies (x:.D6) Integer where
+instance NatNE0_ x => Reifies (x:.D6) Int where
     reflect p = 10 * reflect (div10 p) + 6
-instance NatNE0_ x => Reifies (x:.D7) Integer where
+instance NatNE0_ x => Reifies (x:.D7) Int where
     reflect p = 10 * reflect (div10 p) + 7
-instance NatNE0_ x => Reifies (x:.D8) Integer where
+instance NatNE0_ x => Reifies (x:.D8) Int where
     reflect p = 10 * reflect (div10 p) + 8
-instance NatNE0_ x => Reifies (x:.D9) Integer where
+instance NatNE0_ x => Reifies (x:.D9) Int where
     reflect p = 10 * reflect (div10 p) + 9
 
 -- HACK: we can't actually monomorphize the input, given our use case.
