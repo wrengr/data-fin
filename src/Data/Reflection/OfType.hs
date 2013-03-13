@@ -59,7 +59,7 @@ module Data.Reflection.OfType
     -- * Reification
     , Reflects(..)
     , reify
-    , reifyCPS
+    -- reifyCPS
     -- * Testing
     -- | These properties should always be true.
     , prop_reflectionsAreReified
@@ -445,18 +445,21 @@ reify x = reify_ x fakeReflect
     fakeReflect _ = OfType x
 {-# INLINE reify #-}
 
-
+{-
+-- BUG: how to do this so that @x@ isn't just a skolem variable? We don't want just a shorthand for @runInhabited . inhabit@...
 -- | Given some @y@, assert the possibility that there exists a
--- type @x@ which reifies @y@. The actual @x@ is a skolem variable
--- which is hidden under an existential quantifier.
---
--- This is just a shorthand for reducing the newtype noise of:
---
--- > runInhabited . inhabit
---
-reifyCPS :: a -> (forall x. OfType a x -> r) -> r
-reifyCPS x k = k (OfType x)
+-- type @x@ which reifies @y@.
+reifyCPS :: forall a r. a -> (forall x. Reflects x a => OfType a x -> r) -> r
+reifyCPS x k =
+    case reify_ x fakeReflect of
+    Nothing -> error "reifyCPS: the impossible happened"
+    Just r  -> r
+    where
+    -- HACK: Must float out
+    fakeReflect :: forall x. Reflects x a => Proxy x -> r
+    fakeReflect _ = k (OfType x)
 {-# INLINE reifyCPS #-}
+-}
 
 
 ----------------------------------------------------------------

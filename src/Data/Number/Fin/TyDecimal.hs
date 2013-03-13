@@ -8,9 +8,14 @@
            , UndecidableInstances
            , FunctionalDependencies
            , TypeOperators
+           , RankNTypes
            #-}
+{-
+-- for reifyNat...
+{-# LANGUAGE RankNTypes #-}
+-}
 ----------------------------------------------------------------
---                                                    2013.01.09
+--                                                    2013.03.12
 -- |
 -- Module      :  Data.Number.Fin.TyDecimal
 -- Copyright   :  2012--2013 wren ng thornton,
@@ -128,8 +133,8 @@ infixl 5 :.
 -- little-endian decimal.
 --
 -- The hidden type class @(Nat_ n)@ entails @(Reifies n Integer)@.
-class    (NatLE n MaxBoundInt32, Nat_ n) => Nat n
-instance (NatLE n MaxBoundInt32, Nat_ n) => Nat n -- this instance is "undecidable"
+class    Nat_ n => Nat n
+instance Nat_ n => Nat n -- this instance is "undecidable"
 
 
 -- | Is @n@ a well-formed type of kind @NatNE0@? The only well-formed
@@ -139,8 +144,8 @@ instance (NatLE n MaxBoundInt32, Nat_ n) => Nat n -- this instance is "undecidab
 --
 -- The hidden type class @(NatNE0_ n)@ entails @(Nat_ n)@ and
 -- @(Reifies n Integer)@.
-class    (NatLE n MaxBoundInt32, NatNE0_ n) => NatNE0 n
-instance (NatLE n MaxBoundInt32, NatNE0_ n) => NatNE0 n -- this instance is "undecidable"
+class    NatNE0_ n => NatNE0 n
+instance NatNE0_ n => NatNE0 n -- this instance is "undecidable"
 
 
 -- for internal use only.
@@ -157,7 +162,7 @@ instance Digit_ D8
 instance Digit_ D9
 
 -- for internal use only.
-class (Reifies n Int, Nat_ n) => NatNE0_ n
+class (Reifies n Integer, Nat_ n) => NatNE0_ n
 instance              NatNE0_ D1
 instance              NatNE0_ D2
 instance              NatNE0_ D3
@@ -179,7 +184,7 @@ instance NatNE0_ n => NatNE0_ (n:.D8)
 instance NatNE0_ n => NatNE0_ (n:.D9)
 
 -- for internal use only.
-class (Reifies n Int) => Nat_ n
+class (Reifies n Integer) => Nat_ n
 instance              Nat_ D0
 instance              Nat_ D1
 instance              Nat_ D2
@@ -203,35 +208,35 @@ instance NatNE0_ x => Nat_ (x:.D9)
 
 
 -- BUG: stack overflow issues, unlike the big-endian notation?
-instance Reifies D0 Int where reflect _ = 0 
-instance Reifies D1 Int where reflect _ = 1 
-instance Reifies D2 Int where reflect _ = 2 
-instance Reifies D3 Int where reflect _ = 3 
-instance Reifies D4 Int where reflect _ = 4 
-instance Reifies D5 Int where reflect _ = 5 
-instance Reifies D6 Int where reflect _ = 6 
-instance Reifies D7 Int where reflect _ = 7 
-instance Reifies D8 Int where reflect _ = 8 
-instance Reifies D9 Int where reflect _ = 9 
-instance NatNE0_ x => Reifies (x:.D0) Int where
+instance Reifies D0 Integer where reflect _ = 0 
+instance Reifies D1 Integer where reflect _ = 1 
+instance Reifies D2 Integer where reflect _ = 2 
+instance Reifies D3 Integer where reflect _ = 3 
+instance Reifies D4 Integer where reflect _ = 4 
+instance Reifies D5 Integer where reflect _ = 5 
+instance Reifies D6 Integer where reflect _ = 6 
+instance Reifies D7 Integer where reflect _ = 7 
+instance Reifies D8 Integer where reflect _ = 8 
+instance Reifies D9 Integer where reflect _ = 9 
+instance NatNE0_ x => Reifies (x:.D0) Integer where
     reflect p = 10 * reflect (div10 p)
-instance NatNE0_ x => Reifies (x:.D1) Int where
+instance NatNE0_ x => Reifies (x:.D1) Integer where
     reflect p = 10 * reflect (div10 p) + 1
-instance NatNE0_ x => Reifies (x:.D2) Int where
+instance NatNE0_ x => Reifies (x:.D2) Integer where
     reflect p = 10 * reflect (div10 p) + 2
-instance NatNE0_ x => Reifies (x:.D3) Int where
+instance NatNE0_ x => Reifies (x:.D3) Integer where
     reflect p = 10 * reflect (div10 p) + 3
-instance NatNE0_ x => Reifies (x:.D4) Int where
+instance NatNE0_ x => Reifies (x:.D4) Integer where
     reflect p = 10 * reflect (div10 p) + 4
-instance NatNE0_ x => Reifies (x:.D5) Int where
+instance NatNE0_ x => Reifies (x:.D5) Integer where
     reflect p = 10 * reflect (div10 p) + 5
-instance NatNE0_ x => Reifies (x:.D6) Int where
+instance NatNE0_ x => Reifies (x:.D6) Integer where
     reflect p = 10 * reflect (div10 p) + 6
-instance NatNE0_ x => Reifies (x:.D7) Int where
+instance NatNE0_ x => Reifies (x:.D7) Integer where
     reflect p = 10 * reflect (div10 p) + 7
-instance NatNE0_ x => Reifies (x:.D8) Int where
+instance NatNE0_ x => Reifies (x:.D8) Integer where
     reflect p = 10 * reflect (div10 p) + 8
-instance NatNE0_ x => Reifies (x:.D9) Int where
+instance NatNE0_ x => Reifies (x:.D9) Integer where
     reflect p = 10 * reflect (div10 p) + 9
 
 -- HACK: we can't actually monomorphize the input, given our use case.
@@ -242,6 +247,33 @@ instance NatNE0_ x => Reifies (x:.D9) Int where
 div10 :: proxy (h:.t) -> Proxy h
 div10 _ = Proxy
 {-# INLINE div10 #-}
+
+
+{-
+-- BUG: how can we do this CPS version which properly constrains @x@ to Nat_? It wasn't so hard with the big-endian notation...
+reifyNat :: Integer -> (forall x. Nat_ x => Proxy x -> r) -> r
+reifyNat i k
+    | i <= 0    = k (Proxy :: Proxy D0)
+    | otherwise =
+        let (d,m) = divMod i 10 in
+        case m of
+        0 -> reifyNat d (\p -> k (snoc p (Proxy :: Proxy D0)))
+        1 -> reifyNat d (\p -> k (snoc p (Proxy :: Proxy D1)))
+        2 -> reifyNat d (\p -> k (snoc p (Proxy :: Proxy D2)))
+        3 -> reifyNat d (\p -> k (snoc p (Proxy :: Proxy D3)))
+        4 -> reifyNat d (\p -> k (snoc p (Proxy :: Proxy D4)))
+        5 -> reifyNat d (\p -> k (snoc p (Proxy :: Proxy D5)))
+        6 -> reifyNat d (\p -> k (snoc p (Proxy :: Proxy D6)))
+        7 -> reifyNat d (\p -> k (snoc p (Proxy :: Proxy D7)))
+        8 -> reifyNat d (\p -> k (snoc p (Proxy :: Proxy D8)))
+        9 -> reifyNat d (\p -> k (snoc p (Proxy :: Proxy D9)))
+        _ -> error "Data.Number.Fin.TyDecimal.reifyNat: the impossible happened"
+    where
+    -- BUG: Could not deduce (Snoc x10 D0 x) from the context (Nat_ x10) [etc]
+    snoc :: Snoc x d y => Proxy x -> Proxy d -> Proxy y
+    snoc _ _ = Proxy
+-}
+
 
 
 nat0 :: Proxy D0; nat0 = Proxy 
