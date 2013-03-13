@@ -311,7 +311,7 @@ type MaxBoundWord64 =
 
 
 ----------------------------------------------------------------
--- HACK: the NatLE and NatLT constraints are so that we can deduce them from Succ. That won't happen automatically... And no, just having NatLT doesn't give NatLE...
+-- BUG: We can't automatically deduce (NatLE x y) nor (NatLT x y) from (Succ x y). We can add them as additional constraints on the instances; and that works to get everything in this package to typecheck, but it causes infinite loops whenever we actually try to use Succ as a type-function in real code...
 
 -- | The successor\/predecessor relation; by structural induction
 -- on the first argument. Modes:
@@ -319,38 +319,27 @@ type MaxBoundWord64 =
 -- > Succ x (succ x)  -- i.e., given x, return the successor of x
 -- > Succ (pred y) y  -- i.e., given y, return the predecessor of y
 --
-class (Nat_ x, NatNE0_ y, NatLE x y, NatLT x y)
-    => Succ x y | x -> y, y -> x
-instance Succ D0      D1
-instance Succ D1      D2
-instance Succ D2      D3
-instance Succ D3      D4
-instance Succ D4      D5
-instance Succ D5      D6
-instance Succ D6      D7
-instance Succ D7      D8
-instance Succ D8      D9
-instance Succ D9      (D1:.D0)
-instance (NatNE0_ x, NatLE (x:.D0) (x :.D1), NatLT (x:.D0) (x :.D1))
-    => Succ (x:.D0) (x :.D1)
-instance (NatNE0_ x, NatLE (x:.D1) (x :.D2), NatLT (x:.D1) (x :.D2))
-    => Succ (x:.D1) (x :.D2)
-instance (NatNE0_ x, NatLE (x:.D2) (x :.D3), NatLT (x:.D2) (x :.D3))
-    => Succ (x:.D2) (x :.D3)
-instance (NatNE0_ x, NatLE (x:.D3) (x :.D4), NatLT (x:.D3) (x :.D4))
-    => Succ (x:.D3) (x :.D4)
-instance (NatNE0_ x, NatLE (x:.D4) (x :.D5), NatLT (x:.D4) (x :.D5))
-    => Succ (x:.D4) (x :.D5)
-instance (NatNE0_ x, NatLE (x:.D5) (x :.D6), NatLT (x:.D5) (x :.D6))
-    => Succ (x:.D5) (x :.D6)
-instance (NatNE0_ x, NatLE (x:.D6) (x :.D7), NatLT (x:.D6) (x :.D7))
-    => Succ (x:.D6) (x :.D7)
-instance (NatNE0_ x, NatLE (x:.D7) (x :.D8), NatLT (x:.D7) (x :.D8))
-    => Succ (x:.D7) (x :.D8)
-instance (NatNE0_ x, NatLE (x:.D8) (x :.D9), NatLT (x:.D8) (x :.D9))
-    => Succ (x:.D8) (x :.D9)
-instance (NatNE0_ x, NatLE (x:.D9) (y :.d :.D0), NatLT (x:.D9) (y :.d :.D0),
-    Succ x (y:.d)) => Succ (x:.D9) (y :.d :.D0)
+class (Nat_ x, NatNE0_ y) => Succ x y | x -> y, y -> x
+instance                               Succ D0      D1
+instance                               Succ D1      D2
+instance                               Succ D2      D3
+instance                               Succ D3      D4
+instance                               Succ D4      D5
+instance                               Succ D5      D6
+instance                               Succ D6      D7
+instance                               Succ D7      D8
+instance                               Succ D8      D9
+instance                               Succ D9      (D1:.D0)
+instance (NatNE0_ x)                => Succ (x:.D0) (x :.D1)
+instance (NatNE0_ x)                => Succ (x:.D1) (x :.D2)
+instance (NatNE0_ x)                => Succ (x:.D2) (x :.D3)
+instance (NatNE0_ x)                => Succ (x:.D3) (x :.D4)
+instance (NatNE0_ x)                => Succ (x:.D4) (x :.D5)
+instance (NatNE0_ x)                => Succ (x:.D5) (x :.D6)
+instance (NatNE0_ x)                => Succ (x:.D6) (x :.D7)
+instance (NatNE0_ x)                => Succ (x:.D7) (x :.D8)
+instance (NatNE0_ x)                => Succ (x:.D8) (x :.D9)
+instance (NatNE0_ x, Succ x (y:.d)) => Succ (x:.D9) (y :.d :.D0)
 -- this last case triggers the need for undecidable instances <sigh>
 
 succ :: Succ x y => Proxy x -> Proxy y

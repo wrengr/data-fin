@@ -651,7 +651,17 @@ maxView {suc n} (suc .(weaken i))  | notMax i = notMax (suc i)
 --
 -- The opposite of this function is 'weaken'.
 maxView :: Succ m n => Fin n -> Maybe (Fin m)
-maxView = maxViewLE
+-- BUG: Could not deduce (NatLE m n) from the context (Succ m n)
+maxView = maxView_
+    where
+    -- HACK: Hiding the use of -XScopedTypeVariables from Haddock
+    maxView_ :: forall m n. Succ m n => Fin n -> Maybe (Fin m)
+    maxView_ (Fin i)
+        | i > maxBoundOf y = Nothing
+        | otherwise        = Just y
+        where
+        y = Fin i :: Fin m
+    {-# INLINE maxView_ #-}
 {-# INLINE maxView #-}
 
 
@@ -690,7 +700,8 @@ maxViewLE = maxViewLE_
 --
 -- The opposite of this function is 'maxView'.
 weaken :: Succ m n => Fin m -> Fin n
-weaken = weakenLE
+-- BUG: Could not deduce (NatLE m n) from the context (Succ m n)
+weaken (Fin i) = Fin i
 {-# INLINE weaken #-}
 
 
