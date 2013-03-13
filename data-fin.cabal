@@ -47,9 +47,11 @@ Flag splitBase
 Library
     Hs-Source-Dirs:    src
     Exposed-Modules:   Data.Number.Fin
+                     , Data.Number.Fin.Small
                      -- Data.Number.Fin.TyInteger
-                     , Data.Number.Fin.TyBinary
+                     -- Data.Number.Fin.TyBinary
                      , Data.Number.Fin.TyDecimal
+                     -- TODO: OfType should be moved elsewhere if we don't use it...
                      , Data.Reflection.OfType
                      -- TODO: SafeEnum needs to be moved upstream
                      , Prelude.SafeEnum
