@@ -1,15 +1,14 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 {-# LANGUAGE ScopedTypeVariables
-           , GeneralizedNewtypeDeriving
            , DeriveDataTypeable
            , MultiParamTypeClasses
            , FlexibleContexts
-           , UndecidableInstances
            , CPP
            , Rank2Types
+           , UndecidableInstances
            #-}
 ----------------------------------------------------------------
---                                                    2013.03.12
+--                                                    2013.03.20
 -- |
 -- Module      :  Data.Number.Fin.Int32
 -- Copyright   :  2012--2013 wren ng thornton
@@ -18,7 +17,7 @@
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
--- A newtype of 'Int' for finite subsets of the natural numbers. This is provided as an alternative to "Data.Number.Fin" for those who care more about optimization than about mathematical accuracy. This module is highly experimental and hasn't been as well tested as "Data.Number.Fin". That's problematic since this module has many more corner cases to worry about.
+-- A newtype of 'Int32' for finite subsets of the natural numbers.
 ----------------------------------------------------------------
 module Data.Number.Fin.Int32
     (
@@ -33,48 +32,45 @@ module Data.Number.Fin.Int32
     , minBoundOf
     , maxBoundOf
     
-    -- ** Constructors and destructors
+    -- ** Introduction and elimination
     , toFin
     , toFinProxy
     , toFinCPS
     , fromFin
     
-    -- ** Conversions and coersions
-    -- *** Weakening and the maximum-element view
-    , maxView
-    , maxViewLE
+    -- ** Views and coersions
+    -- *** Weakening and maximum views
     , weaken
     , weakenLE
     , weakenPlus
+    , maxView
+    , maxViewLE
     
     -- *** Widening and the predecessor view
-    , predView
     , widen
     , widenLE
     , widenPlus
+    , predView
     
     -- *** The ordinal-sum functor
-    -- | These operations provide the monoidal structure of the
-    -- (skeleton of the) augmented simplex category. For more details
-    -- on the mathematics, see
-    -- <http://ncatlab.org/nlab/show/simplex+category>.
     , plus
-    , fplus
     , unplus
+    , fplus
     
-    -- thinning, thickening, and equality
+    -- *** Face- and degeneracy-maps
+    , thin
+    , thick
+    -- TODO: is there any way to get equality to work right?
     ) where
 
 import qualified Prelude.SafeEnum as SE
+import Data.Int (Int32)
 import Data.Ix
-import Data.Number.Fin.TyDecimal (Nat, Succ, Add, NatLE)
+import Data.Number.Fin.TyDecimal (Nat, Succ, Add, NatLE, MaxBoundInt32)
 import Data.Typeable   (Typeable)
 import Data.Proxy      (Proxy(Proxy))
 import Data.Reflection (Reifies(reflect), reify)
 import Control.Monad   (liftM)
-#ifdef __GLASGOW_HASKELL__
-import GHC.Exts (build)
-#endif
 
 import qualified Test.QuickCheck as QC
 #if (MIN_VERSION_smallcheck(0,6,0))
@@ -86,132 +82,17 @@ import qualified Test.LazySmallCheck as LSC
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
-
-{-
--- TODO: make Fin a newtype family indexed by the representation type it's a newtype of (e.g., the version here would be @Fin Int n@). That way we could add a constraint to ReflectNum\/reflectNum (and hence 'toFin') to ensure correct behavior! Then we could adjust representation types with @coerce :: (LE n (MaxBound r), LE n (MaxBound r')) => Fin r n -> Fin r' n@. This would also work great with @Int `Mod` n@ for the modular arithmetic!
-
--- works in GHCi 7.6.1, the kind signature is required..., backticks *do* work
-data family Fin r :: * -> *
-newtype instance Fin Int n = FinInt Int
-
--- so does:
-class ReifyNum r => ReflectNum r s where
-    reflectNum :: s -> r
-class ReifyNum r where
-    type MaxBound r :: * -- maxBound+1 would be okay for the purposes of Fin (since we do -1); but it must be maxBound itself for ReflectNum
-    type MinBound r :: *
-    reifyNum :: r -> (forall s. ReflectNum r s => s -> w) -> w
-
-class ReifyNum r => Finite r where
-    data Fin r :: * -> *
-    toFin   :: ReflectNum r n => r -> Maybe (Fin r n)
-    fromFin :: ReflectNum r n => Fin r n -> r
-instance Finite Int where
-    newtype Fin Int n = FinInt Int
-    type MaxBound Int = Positive (X2(X1(X4(X7(X4(X8(X3(X6(X4(X8 X_))))))))))
-    toFin = Just . FinInt
-    fromFin (FinInt i) = i
-
-cf. ekmett's
--- > reify :: a -> (forall s. Reifies s a => Proxy s -> r) -> r
--- > class Reifies s a | s -> a where reflect :: proxy s -> a
-
-Of course, that fundep means we'd need to add another wrapper around the type-level numbers in order to indicate their desired representation type... ugh. Though surely it's there for a reason... I guess we'll have to put MinBound and MaxBound somewhere else, where we're defining those representation type wrappers...
-
--- | Values of type @x `OfType` a@ are proofs that (the reflection
--- of) @x@ has type @a@. Of course there's an easy proof: the
--- reflection of @x@ as an actual value of type @a@; hence, this
--- is a singleton type whose only value is the reflection of @x@
--- at type @a@.
-newtype OfType x a = OfType a
-    -- N.B., do not export the constructor; else this is equivalent to @Tagged x a@, which allows people to change the tag!
-
-kind TyInteger where
-    type Positive :: TyUnsigned -> TyInteger
-    type Negative :: TyUnsigned -> TyInteger
-
-kind TyUnsigned where
-    type X_ :: TyUnsigned
-    type X0 :: TyUnsigned -> TyUnsigned
-    type X1 :: TyUnsigned -> TyUnsigned
-    type X2 :: TyUnsigned -> TyUnsigned
-    type X3 :: TyUnsigned -> TyUnsigned
-    type X4 :: TyUnsigned -> TyUnsigned
-    type X5 :: TyUnsigned -> TyUnsigned
-    type X6 :: TyUnsigned -> TyUnsigned
-    type X7 :: TyUnsigned -> TyUnsigned
-    type X8 :: TyUnsigned -> TyUnsigned
-    type X9 :: TyUnsigned -> TyUnsigned
-
-type family MinBound :: * -> TyInteger
-type family MaxBound :: * -> TyInteger
-
-instance
-    ( LE s (MaxBound r)
-    , LE Zero s
-    , Reifies s XRepr
-    , Num r
-    ) => Reifies (Positive s `OfType` r) r
-    where reflect _ = reflect (Proxy :: Proxy s) `applyXRepr` 0
-instance
-    ( LE (MinBound r) s
-    , LE s Zero
-    , Reifies s XRepr
-    , Num r
-    ) => Reifies (Negative s `OfType` r) r
-    where reflect _ = negate (reflect (Proxy :: Proxy s) `applyXRepr` 0)
-
--- Ideally we'd like to just use @(r -> r)@ with a @Num r@ constraint on the instance, but that requires FlexibleInstances since the @r@ is duplicated. So then we could try @Endo r@, but that requires UndecidableInstances since it violates the coverage condition, apparently. Thus, we end up with this type. Alas, it will almost surely interfere with all the inlining necessary to monomorphize and linearize the actual code. So the question is, which is more expensive: interpreting an XRepr datatype at known fixed types, or this polymorphic interpretation-less approach?
-newtype XRepr = XRepr (forall r. Num r => r -> r)
-
-instance Monoid XRepr where
-    mempty                    = XRepr id
-    XRepr f `mappend` XRepr g = XRepr (f .! g)
-
-XRepr f `applyXRepr` x = f $! x
-
--- BUG: this could still be screwed up if overlapping instances are allowed...
-instance Reifies X_ XRepr where
-    reflect _ = mempty
-instance Reifies s XRepr => Reifies (X0 s) XRepr where
-    reflect _ = reflect (Proxy :: Proxy s) <> XRepr (\n -> 0 + 10*n)
-instance Reifies s XRepr => Reifies (X1 s) XRepr where
-    reflect _ = reflect (Proxy :: Proxy s) <> XRepr (\n -> 1 + 10*n)
-instance Reifies s XRepr => Reifies (X2 s) XRepr where
-    reflect _ = reflect (Proxy :: Proxy s) <> XRepr (\n -> 2 + 10*n)
-instance Reifies s XRepr => Reifies (X3 s) XRepr where
-    reflect _ = reflect (Proxy :: Proxy s) <> XRepr (\n -> 3 + 10*n)
-instance Reifies s XRepr => Reifies (X4 s) XRepr where
-    reflect _ = reflect (Proxy :: Proxy s) <> XRepr (\n -> 4 + 10*n)
-instance Reifies s XRepr => Reifies (X5 s) XRepr where
-    reflect _ = reflect (Proxy :: Proxy s) <> XRepr (\n -> 5 + 10*n)
-instance Reifies s XRepr => Reifies (X6 s) XRepr where
-    reflect _ = reflect (Proxy :: Proxy s) <> XRepr (\n -> 6 + 10*n)
-instance Reifies s XRepr => Reifies (X7 s) XRepr where
-    reflect _ = reflect (Proxy :: Proxy s) <> XRepr (\n -> 7 + 10*n)
-instance Reifies s XRepr => Reifies (X8 s) XRepr where
-    reflect _ = reflect (Proxy :: Proxy s) <> XRepr (\n -> 8 + 10*n)
-instance Reifies s XRepr => Reifies (X9 s) XRepr where
-    reflect _ = reflect (Proxy :: Proxy s) <> XRepr (\n -> 9 + 10*n)
--}
-
-----------------------------------------------------------------
--- | A finite set of integers @Fin n = { i :: Int | 0 <= i < n }@
+-- | A finite set of integers @Fin n = { i :: Int32 | 0 <= i < n }@
 -- with the usual ordering. This is typed as if using the standard
 -- GADT presentation of @Fin n@, however it is actually implemented
--- by a plain 'Int'.
---
--- /N.B.,/ The @n@ parameter is reflected as an 'Integer' /not/ as
--- an 'Int'. This is necessary for code cleanliness since there's
--- no convenient way to institute an upper bound on the 'Nat' kind.
--- However, this means that for very large @n@, @Fin n@ is incomplete
--- because 'Int' cannot represent all the integers less than @n@.
--- Since one of the goals of this library is high-performance
--- pseudo-dependent types, and since we generally care about small
--- @n@, we do not worry too much about this discrepancy.
-newtype Fin n = Fin Int
-    deriving (Show, Typeable)
-    -- BUG: Without using constraints on the data type, derived instances don't get (e.g., Nat) constraints; but, constraints on data types is deprecated...
+-- by a plain 'Int32'.
+newtype Fin n = Fin Int32
+    deriving Typeable
+    -- WART: to give additional constraints (e.g., Nat n) on derived
+    -- instances (e.g., Show, Eq, Ord), we need to specify the
+    -- constraints on the data type declaration; however, giving of
+    -- data-type constraints is deprecated and will be removed from
+    -- the language...
 
 {-
 -- Some fusion rules for treating newtypes like 'id', or as close
@@ -227,49 +108,6 @@ newtype Fin n = Fin Int
 "liftA Fin"    [0]  liftA Fin = unsafeCoerce
     #-}
 -}
-
--- Not derived, just so we can add the @Nat n@ constraint...
-instance Nat n => Eq (Fin n) where
-    Fin i == Fin j  =  i == j
-    Fin i /= Fin j  =  i /= j
-    {-# INLINE (==) #-}
-    {-# INLINE (/=) #-}
-
--- Not derived, just so we can add the @Nat n@ constraint...
-instance Nat n => Ord (Fin n) where
-    Fin i <  Fin j          = i <  j
-    Fin i <= Fin j          = i <= j
-    Fin i >  Fin j          = i >  j
-    Fin i >= Fin j          = i >= j
-    compare (Fin i) (Fin j) = compare i j
-    min     (Fin i) (Fin j) = Fin (min i j)
-    max     (Fin i) (Fin j) = Fin (max i j)
-    {-# INLINE (<)     #-}
-    {-# INLINE (<=)    #-}
-    {-# INLINE (>)     #-}
-    {-# INLINE (>=)    #-}
-    {-# INLINE compare #-}
-    {-# INLINE min     #-}
-    {-# INLINE max     #-}
-
-
--- | Truncate large integers to the 'maxBound' of 'Int'.
-trunc :: Integer -> Int
-trunc i
-    | i < j     = fromInteger i
-    | otherwise = maxBound
-    where
-    j = toInteger (maxBound :: Int)
-
-{-
--- TODO: don't re-use the LE class for this. Define a new class for one domain being smaller than another...
-instance (Nat m, Nat n, LE m n) => LE (Fin m) (Fin n)
--}
-
--- TODO: f :: Maybe (Fin n)          <-> Fin (Succ n) -- both obvious versions
-    -- TODO: define @Surely a = Only a | Everything@ instead of reusing Maybe?
--- TODO: f :: Either (Fin m) (Fin n) <-> Fin (Plus m n)
--- TODO: f :: (Fin m, Fin n)         <-> Fin (Times m n)
 
 {- TODO:
 -- also: <http://paczesiowa.blogspot.com/2010/01/pure-extensible-exceptions-and-self.html>
@@ -300,132 +138,157 @@ instance Exception FinException
 -}
 
 
--- TODO: non-derived Show instance so we can add the @Nat n@ constraint...
+-- | Often, we don't want to use the @Fin n@ as a proxy, since that
+-- would introduce spurious data dependencies. This function ignores
+-- its argument (other than for type propagation) so, hopefully,
+-- via massive inlining this function will avoid that spurious
+-- dependency. Hopefully...
+--
+-- Also, this lets us minimize the use of @-XScopedTypeVariables@
+-- which makes the Haddocks ugly. And so it lets us avoid the hacks
+-- to hide our use of @-XScopedTypeVariables@.
+--
+-- TODO: is this enough to ensure reflection is/can-be done at compile-time?
+-- TODO: is there any way to tell GHC that this function should /never/ appear in the output of compilation?
+fin2proxy :: (NatLE n MaxBoundInt32, Nat n) => fin n -> Proxy n
+fin2proxy _ = Proxy
+{-# INLINE fin2proxy #-}
+
+
+----------------------------------------------------------------
+-- HACK: Not derived, just so we can add the @Nat n@ constraint...
+instance (NatLE n MaxBoundInt32, Nat n) => Show (Fin n) where
+    showsPrec d (Fin i) =
+        showParen (d > 10) $ ("Fin "++) . shows i
 
 
 -- | Like 'show', except it shows the type itself instead of the
 -- value.
-showFinType :: Nat n => Fin n -> String
+showFinType :: (NatLE n MaxBoundInt32, Nat n) => Fin n -> String
 showFinType x = showsFinType x []
 {-# INLINE showFinType #-}
+-- Should never fire, due to inlining
+{- RULES
+"showFinType/++"  forall x s. showFinType x ++ s = showsFinType x s
+    -}
 
 
--- N.B., we use @showsPrec 11@ rather than 'shows' to add parentheses
--- just in case @n@ is negative.
--- BUG: if @n > maxBound@ we still get overflow to negatives...
 -- | Like 'shows', except it shows the type itself instead of the
 -- value.
-showsFinType :: Nat n => Fin n -> ShowS
-showsFinType = showsFinType_
-    where
-    -- HACK: Hiding the use of -XScopedTypeVariables from Haddock
-    showsFinType_   :: forall n. Nat n => Fin n -> ShowS
-    showsFinType_ _ = ("Fin "++) . showsPrec 11 (reflect (Proxy :: Proxy n))
-    -- To avoid spurious data-dependency, don't use the argument as the proxy.
-    -- TODO: is that enough to ensure we can reflect at compile-time?
-    {-# INLINE showsFinType_ #-}
-{-# INLINE showsFinType #-}
+showsFinType :: (NatLE n MaxBoundInt32, Nat n) => Fin n -> ShowS
+showsFinType x = ("Fin "++) . shows (reflect (fin2proxy x))
+{-# INLINE [0] showsFinType #-}
+-- TODO: Is [0] the best level to start inlining showsFinType?
+{-# RULES
+"showsFinType/++"  forall x s1 s2.
+    showsFinType x s1 ++ s2 = showsFinType x (s1 ++ s2)
+    #-}
 
-
--- BUG: this only reads numeric literals, not ("Fin "++show n) and equivalent things...
-instance Nat n => Read (Fin n) where
-#ifdef __GLASGOW_HASKELL__
-    readsPrec p str = build (\cons nil ->
-        let step (i,rest) xs = maybe xs (\x -> cons (x,rest) xs) (toFin i)
-        in  foldr step nil (readsPrec p str))
-#else
-    readsPrec = (foldr step [] .) . readsPrec
-        where
-        step (i,rest) xs = maybe xs (\x -> (x,rest):xs) (toFin i)
-#endif
-{- -- TODO: this works, but how can we do fusion? or does it matter?
-    readsPred d =
-        -- The name shadowing is intentional
-        readParen (d > 10) $ \s -> do
-            ("Fin", s) <- lex s
-            (i,     s) <- readsPrec 11 s
-            maybe [] (\n -> [(n,s)]) (toFin i)
--}
-
+-- TODO: showsPrecFinType?
 
 ----------------------------------------------------------------
-instance Nat n => Bounded (Fin n) where
+-- N.B., we cannot derive Read, since that would inject invalid numbers!
+instance (NatLE n MaxBoundInt32, Nat n) => Read (Fin n) where
+    readsPrec d =
+        readParen (d > 10) $ \s0 -> do
+            ("Fin", s1) <- lex s0
+            (i,     s2) <- readsPrec 11 s1
+            maybe [] (\n -> [(n,s2)]) (toFin i)
+
+----------------------------------------------------------------
+-- HACK: Not derived, just so we can add the @Nat n@ constraint...
+instance (NatLE n MaxBoundInt32, Nat n) => Eq (Fin n) where
+    Fin i == Fin j  =  i == j
+    Fin i /= Fin j  =  i /= j
+    {-# INLINE (==) #-}
+    {-# INLINE (/=) #-}
+
+----------------------------------------------------------------
+-- HACK: Not derived, just so we can add the @Nat n@ constraint...
+instance (NatLE n MaxBoundInt32, Nat n) => Ord (Fin n) where
+    Fin i <  Fin j          = i <  j
+    Fin i <= Fin j          = i <= j
+    Fin i >  Fin j          = i >  j
+    Fin i >= Fin j          = i >= j
+    compare (Fin i) (Fin j) = compare i j
+    min     (Fin i) (Fin j) = Fin (min i j)
+    max     (Fin i) (Fin j) = Fin (max i j)
+    {-# INLINE (<)     #-}
+    {-# INLINE (<=)    #-}
+    {-# INLINE (>)     #-}
+    {-# INLINE (>=)    #-}
+    {-# INLINE compare #-}
+    {-# INLINE min     #-}
+    {-# INLINE max     #-}
+
+----------------------------------------------------------------
+instance (NatLE n MaxBoundInt32, Nat n) => Bounded (Fin n) where
     minBound = Fin 0
+    maxBound = Fin (fromInteger (reflect (Proxy :: Proxy n) - 1))
     {-# INLINE minBound #-}
-    maxBound = Fin (trunc (reflect (Proxy :: Proxy n) - 1))
     {-# INLINE maxBound #-}
 
 
 -- | Return the 'minBound' of @Fin n@ as a plain integer. This is
 -- always zero, but is provided for symmetry with 'maxBoundOf'.
-minBoundOf :: Nat n => Fin n -> Int
+minBoundOf :: (NatLE n MaxBoundInt32, Nat n) => Fin n -> Int32
 minBoundOf _ = 0
 {-# INLINE minBoundOf #-}
 
 
 -- | Return the 'maxBound' of @Fin n@ as a plain integer. This is
--- always @n-1@ [1], but it's helpful because you may not know what
+-- always @n-1@, but it's helpful because you may not know what
 -- @n@ is at the time.
---
--- [1] That is, provided @n@ isn't \"too large\" (i.e., greater
--- than @1+toInteger(maxBound::Int)@). If it is, then this function
--- will return the largest of the actual values inhabiting @Fin n@
--- (i.e., @'maxBound' :: 'Int'@).
-maxBoundOf :: Nat n => Fin n -> Int
-maxBoundOf = maxBoundOf_
-    where
-    -- HACK: Hiding the use of -XScopedTypeVariables from Haddock
-    maxBoundOf_   :: forall n. Nat n => Fin n -> Int
-    maxBoundOf_ _ = trunc (reflect (Proxy :: Proxy n) - 1)
-    -- To avoid spurious data-dependency, don't use the argument as the proxy.
-    -- TODO: is that enough to ensure we can reflect at compile-time?
-    {-# INLINE maxBoundOf_ #-}
+maxBoundOf :: (NatLE n MaxBoundInt32, Nat n) => Fin n -> Int32
+maxBoundOf x = fromInteger (reflect (fin2proxy x) - 1)
 {-# INLINE maxBoundOf #-}
 
 
+----------------------------------------------------------------
 -- N.B., we cannot derive Enum, since that would inject invalid numbers!
 -- N.B., we're using partial functions, because H98 requires it!
-instance Nat n => Enum (Fin n) where
+instance (NatLE n MaxBoundInt32, Nat n) => Enum (Fin n) where
     succ x =
         case SE.succ x of
         Just y  -> y
-        Nothing -> _succ_maxBound "Fin{Small}" -- cf, @GHC.Word.succError@
+        Nothing -> _succ_maxBound "Fin.Int32" -- cf, @GHC.Word.succError@
     {-# INLINE succ #-}
     
     pred x =
         case SE.pred x of
         Just y  -> y
-        Nothing -> _pred_minBound "Fin{Small}" -- cf, @GHC.Word.predError@
+        Nothing -> _pred_minBound "Fin.Int32" -- cf, @GHC.Word.predError@
     {-# INLINE pred #-}
     
     toEnum i =
         case SE.toEnum i of
         Just y  -> y
-        Nothing -> _toEnum_OOR "Fin{Small}" -- cf, @GHC.Word.toEnumError@
+        Nothing -> _toEnum_OOR "Fin.Int32" -- cf, @GHC.Word.toEnumError@
     {-# INLINE toEnum #-}
     
-    fromEnum = fromFin
+    fromEnum = fromIntegral . fromFin
     {-# INLINE fromEnum #-}
     
-    {- Hopefully list fusion will get rid of the map, and preserve the fusion tricks in GHC.Enum -}
-    enumFrom     x@(Fin i)  = map Fin (enumFromTo i (maxBoundOf x))
-    {-# INLINE enumFrom #-}
+    -- Hopefully list fusion will get rid of the map, and preserve
+    -- the fusion tricks in GHC.Enum...
+    enumFrom     x@(Fin i)        = map Fin (enumFromTo i (maxBoundOf x))
     enumFromThen x@(Fin i) (Fin j)
-        | j >= i            = map Fin (enumFromThenTo i j (maxBoundOf x))
-        | otherwise         = map Fin (enumFromThenTo i j (minBoundOf x))
-    {-# INLINE enumFromThen #-}
+        | j >= i                  = map Fin (enumFromThenTo i j (maxBoundOf x))
+        | otherwise               = map Fin (enumFromThenTo i j (minBoundOf x))
     enumFromTo     (Fin i)         (Fin k) = map Fin (enumFromTo i k)
-    {-# INLINE enumFromTo #-}
     enumFromThenTo (Fin i) (Fin j) (Fin k) = map Fin (enumFromThenTo i j k)
+    {-# INLINE enumFrom #-}
+    {-# INLINE enumFromThen #-}
+    {-# INLINE enumFromTo #-}
     {-# INLINE enumFromThenTo #-}
 
 {-
 _pred_succ :: Nat n => Fin n -> Fin n
-_pred_succ x = if x == maxBound then _succ_maxBound "Fin" else x
+_pred_succ x = if x == maxBound then _succ_maxBound "Fin.Int32" else x
 {-# INLINE _pred_succ #-}
 
 _succ_pred :: Nat n => Fin n -> Fin n
-_succ_pred x = if x == minBound then _pred_minBound "Fin" else x
+_succ_pred x = if x == minBound then _pred_minBound "Fin.Int32" else x
 {-# INLINE _succ_pred #-}
 
 -- BUG: how can we introduce the (Nat n) constraint? Floating out the RHSs to give them signatures doesn't help.
@@ -438,7 +301,7 @@ _succ_pred x = if x == minBound then _pred_minBound "Fin" else x
     #-}
 -}
 
-instance Nat n => SE.UpwardEnum (Fin n) where
+instance (NatLE n MaxBoundInt32, Nat n) => SE.UpwardEnum (Fin n) where
     succ x@(Fin i)
         | x < maxBound = Just $! Fin (i + 1)
         | otherwise    = Nothing
@@ -450,7 +313,7 @@ instance Nat n => SE.UpwardEnum (Fin n) where
     {-# INLINE enumFrom #-}
     {-# INLINE enumFromTo #-}
 
-instance Nat n => SE.DownwardEnum (Fin n) where
+instance (NatLE n MaxBoundInt32, Nat n) => SE.DownwardEnum (Fin n) where
     pred (Fin i)
         | 0 < i     = Just $! Fin (i - 1)
         | otherwise = Nothing
@@ -462,13 +325,14 @@ instance Nat n => SE.DownwardEnum (Fin n) where
     {-# INLINE enumDownFrom #-}
     {-# INLINE enumDownFromTo #-}
     
-instance Nat n => SE.Enum (Fin n) where
+instance (NatLE n MaxBoundInt32, Nat n) => SE.Enum (Fin n) where
     toEnum i
-        | 0 <= i && i <= maxBoundOf x = Just x
+        | 0 <= j && j <= maxBoundOf x = Just x
         | otherwise                   = Nothing
         where
-        x = Fin i :: Fin n
-    fromEnum x     = Just $! fromFin x
+        j = fromIntegral i
+        x = Fin j :: Fin n
+    fromEnum x     = Just $! (fromIntegral . fromFin) x
     enumFromThen   = enumFromThen
     enumFromThenTo = enumFromThenTo
     {-# INLINE toEnum #-}
@@ -478,7 +342,7 @@ instance Nat n => SE.Enum (Fin n) where
 
 
 -- TODO: can we trust the validity of the input arguments?
-instance Nat n => Ix (Fin n) where
+instance (NatLE n MaxBoundInt32, Nat n) => Ix (Fin n) where
     index     (Fin i, Fin j) (Fin k) = index     (i,j) k
     range     (Fin i, Fin j)         = map Fin (range (i,j))
     inRange   (Fin i, Fin j) (Fin k) = inRange   (i,j) k
@@ -493,19 +357,12 @@ instance Nat n => Ix (Fin n) where
 -- TODO: why was the checking stuff done using exceptions instead of Maybe?
 -- TODO: can we successfully ensure that invalid values can *never* be constructed?
 
--- | A version of 'id' which checks that the argument is in fact
--- valid for its type before returning it. Throws an exception if
--- the @Fin n@ is invalid.
-check :: Nat n => Fin n -> Fin n
-check x = x `checking` x
-{-# INLINE check #-}
-
 
 -- | A version of 'const' which checks that the second argument is
 -- in fact valid for its type before returning the first argument.
 -- Throws an exception if the @Fin n@ is invalid. The name and
 -- argument ordering are indended for infix use.
-checking :: Nat n => a -> Fin n -> a
+checking :: (NatLE n MaxBoundInt32, Nat n) => a -> Fin n -> a
 checking a x
     | minBound <= x && x <= maxBound = a
     | otherwise                      = _checking_OOR x
@@ -513,7 +370,7 @@ checking a x
 
 
 -- TODO: use extensible-exceptions instead of 'error'
-_checking_OOR :: Nat n => Fin n -> a
+_checking_OOR :: (NatLE n MaxBoundInt32, Nat n) => Fin n -> a
 _checking_OOR x = error
     . ("The value "++)
     . shows x
@@ -528,7 +385,7 @@ _checking_OOR x = error
 -- then this function will throw an exception. However, this should
 -- /never/ happen. If it does, contact the maintainer since this
 -- indicates a bug\/insecurity in this library.
-fromFin :: Nat n => Fin n -> Int
+fromFin :: (NatLE n MaxBoundInt32, Nat n) => Fin n -> Int32
 fromFin x@(Fin i) = i `checking` x
 {-# INLINE fromFin #-}
 
@@ -536,11 +393,13 @@ fromFin x@(Fin i) = i `checking` x
 -- | Safely embed a number into @Fin n@. Use of this function will
 -- generally require an explicit type signature in order to know
 -- which @n@ to use.
-toFin :: Nat n => Int -> Maybe (Fin n)
+toFin :: (NatLE n MaxBoundInt32, Nat n) => Int32 -> Maybe (Fin n)
 toFin = toFin_
     where
     -- HACK: Hiding the use of -XScopedTypeVariables from Haddock
-    toFin_ :: forall n. Nat n => Int -> Maybe (Fin n)
+    -- TODO: why is the choice of @n@ ambiguous?
+    toFin_ :: forall n. (NatLE n MaxBoundInt32, Nat n)
+           => Int32 -> Maybe (Fin n)
     toFin_ i
         | 0 <= i && i <= maxBoundOf x = Just x
         | otherwise                   = Nothing
@@ -552,8 +411,10 @@ toFin = toFin_
 -- TODO: RULES for toFin.fromFin and fromFin.toFin
 
 
--- | Safely embed a number into @Fin n@. This variant of 'toFin' uses a proxy to avoid the need for type signatures.
-toFinProxy :: Nat n => Proxy n -> Int -> Maybe (Fin n)
+-- | Safely embed a number into @Fin n@. This variant of 'toFin'
+-- uses a proxy to avoid the need for type signatures.
+toFinProxy :: (NatLE n MaxBoundInt32, Nat n)
+           => Proxy n -> Int32 -> Maybe (Fin n)
 toFinProxy _ = toFin
 {-# INLINE toFinProxy #-}
 
@@ -569,21 +430,20 @@ toFinProxy _ = toFin
 -- >     | 0 <= i && i < n  = Just (k i)  -- morally speaking...
 -- >     | otherwise        = Nothing
 --
-toFinCPS :: Integer -> (forall n. Reifies n Integer => Fin n -> r) -> Int -> Maybe r
-toFinCPS n k i =
-    if 0 <= i && i < trunc n
-    then Just (reify n $ \(_ :: Proxy n) -> k (Fin i :: Fin n))
-    else Nothing
+toFinCPS :: Int32 -> (forall n. Reifies n Integer => Fin n -> r) -> Int32 -> Maybe r
+toFinCPS n k i
+    | 0 <= i && i < n = Just (reify (toInteger n) $ \(_ :: Proxy n) -> k (Fin i :: Fin n))
+    | otherwise       = Nothing
 {-# INLINE toFinCPS #-}
 -- BUG: can't use @Nat n@ because: Could not deduce (Nat_ n) from the context (Reifies n Integer)
 -- TODO: how can we get Data.Number.Fin.TyDecimal.reifyNat to work?
 
 
 ----------------------------------------------------------------
-instance Nat n => QC.Arbitrary (Fin n) where
+instance (NatLE n MaxBoundInt32, Nat n) => QC.Arbitrary (Fin n) where
     shrink = tail . SE.enumDownFrom
     arbitrary
-        | x >= 0    = Fin `liftM` QC.choose (0,x)
+        | x >= 0    = (Fin . fromInteger) `liftM` QC.choose (0,x)
         | otherwise =
             -- BUG: there's no way to say it's impossible...
             error . ("Arbitrary.arbitrary{"++)
@@ -591,39 +451,42 @@ instance Nat n => QC.Arbitrary (Fin n) where
                   $ "}: this type is empty"
             -- TODO: use extensible-exceptions instead of 'error'
         where
-        x = maxBoundOf (__ :: Fin n)
+        -- BUG: no instance Random Int32
+        x = toInteger (maxBoundOf (__ :: Fin n))
         
 
 
-instance Nat n => QC.CoArbitrary (Fin n) where
+instance (NatLE n MaxBoundInt32, Nat n) => QC.CoArbitrary (Fin n) where
     coarbitrary (Fin n) = QC.variant n
 
 
-instance Nat n => SC.Serial (Fin n) where
+instance (NatLE n MaxBoundInt32, Nat n) => SC.Serial (Fin n) where
     series d
         | d < 0     = [] -- paranoia.
         | otherwise =
-            case toFin d of
+            case toFin (fromIntegral d) of
             Nothing -> enumFromTo minBound maxBound
             Just n  -> enumFromTo minBound n
     
     coseries rs d =
         [ \(Fin i) ->
             if i > 0
-            then f (check (Fin (i-1) :: Fin n)) -- more paranoia.
+            then let j = Fin (i-1) :: Fin n
+                in f j `checking` j -- more paranoia; in case n==0 or i>n
             else z
         | z <- SC.alts0 rs d
         , f <- SC.alts1 rs d
         ]
 
-instance Nat n => LSC.Serial (Fin n) where
+instance (NatLE n MaxBoundInt32, Nat n) => LSC.Serial (Fin n) where
     series = LSC.drawnFrom . SC.series
 
 
 ----------------------------------------------------------------
--- TODO: wtf? <http://ncatlab.org/nlab/show/decalage>
+-- TODO: do we care about <http://ncatlab.org/nlab/show/decalage>?
 
 
+-- TODO: define @Surely a = Only a | Everything@ instead of reusing Maybe?
 {- -- Agda's version:
 data MaxView {n : Nat} : Fin (suc n) -> Set where
   theMax :                MaxView (fromNat n)
@@ -640,25 +503,27 @@ maxView {suc n} (suc .(weaken i))  | notMax i = notMax (suc i)
 -- | The maximum-element view. This strengthens the type by removing
 -- the maximum element:
 --
--- > maxView maxBound == Nothing
--- > maxView x        == Just x  -- morally speaking...
---
--- /N.B.,/ when @m@ or @n@ is \"too large\" then this function may
--- or may not do what you think it should. Namely, in this case,
--- whenever the 'maxBound' of @Fin n@ can still be represented in
--- @Fin m@, then it is returned as usual (i.e., we don't return
--- @Nothing@).
+-- > maxView maxBound = Nothing
+-- > maxView x        = Just x  -- morally speaking...
 --
 -- The opposite of this function is 'weaken'.
-maxView :: Succ m n => Fin n -> Maybe (Fin m)
--- BUG: Could not deduce (NatLE m n) from the context (Succ m n)
+--
+-- > maxView . weaken                == Just
+-- > maybe maxBound weaken . maxView == id
+--
+maxView
+    :: (NatLE m MaxBoundInt32, NatLE n MaxBoundInt32, Succ m n)
+    => Fin n -> Maybe (Fin m)
+-- BUG: Could not deduce (NatLE m n) from the context (Succ m n); so can't use maxViewLE as the implementation.
+-- BUG: Could not deduce (NatLE m MaxBoundInt32) from the context (NatLE n MaxBoundInt32, Succ m n); so we have to add it.
 maxView = maxView_
     where
     -- HACK: Hiding the use of -XScopedTypeVariables from Haddock
-    maxView_ :: forall m n. Succ m n => Fin n -> Maybe (Fin m)
+    -- TODO: why is the choice of @n@ ambiguous? Even using @y<=maxBound@ we still need the signature on @y@...
+    maxView_ :: forall m n. (NatLE m MaxBoundInt32) => Fin n -> Maybe (Fin m)
     maxView_ (Fin i)
-        | i > maxBoundOf y = Nothing
-        | otherwise        = Just y
+        | i <= maxBoundOf y = Just y
+        | otherwise         = Nothing
         where
         y = Fin i :: Fin m
     {-# INLINE maxView_ #-}
@@ -669,20 +534,23 @@ maxView = maxView_
 -- multiple steps. Use of this function will generally require an
 -- explicit type signature in order to know which @m@ to use.
 --
--- /N.B.,/ when @m@ or @n@ is \"too large\" then this function may
--- or may not do what you think it should. As with 'maxView',
--- whenever the value can still be represented in @Fin m@, then it
--- is returned as usual (i.e., we don't return @Nothing@).
+-- The opposite of this function is 'weakenLE'. When the choice of
+-- @m@ and @n@ is held constant, we have that:
 --
--- The opposite of this function is 'weakenLE'.
-maxViewLE :: NatLE m n => Fin n -> Maybe (Fin m)
+-- > maxViewLE . weakenLE      == Just
+-- > fmap weakenLE . maxViewLE == (\i -> if i < m then Just i else Nothing)
+--
+maxViewLE
+    :: (NatLE m MaxBoundInt32, NatLE n MaxBoundInt32, NatLE m n)
+    => Fin n -> Maybe (Fin m)
+-- BUG: Could not deduce (NatLE m MaxBoundInt32) from the context (NatLE n MaxBoundInt32, Succ m n); so we have to add it.
 maxViewLE = maxViewLE_
     where
     -- HACK: Hiding the use of -XScopedTypeVariables from Haddock
-    maxViewLE_ :: forall m n. NatLE m n => Fin n -> Maybe (Fin m)
+    maxViewLE_ :: forall m n. (NatLE m MaxBoundInt32) => Fin n -> Maybe (Fin m)
     maxViewLE_ (Fin i)
-        | i > maxBoundOf y = Nothing
-        | otherwise        = Just y
+        | i <= maxBoundOf y = Just y
+        | otherwise         = Nothing
         where
         y = Fin i :: Fin m
     {-# INLINE maxViewLE_ #-}
@@ -694,12 +562,16 @@ maxViewLE = maxViewLE_
 
 -- This type-restricted version is a~la Agda.
 -- | Embed a finite domain into the next larger one, keeping the
--- same position relative to 'minBound'. That is:
+-- same position relative to 'minBound'. That is,
 --
 -- > fromFin (weaken x) == fromFin x
 --
 -- The opposite of this function is 'maxView'.
-weaken :: Succ m n => Fin m -> Fin n
+--
+-- > maxView . weaken                == Just
+-- > maybe maxBound weaken . maxView == id
+--
+weaken :: (NatLE n MaxBoundInt32, Succ m n) => Fin m -> Fin n
 -- BUG: Could not deduce (NatLE m n) from the context (Succ m n)
 weaken (Fin i) = Fin i
 {-# INLINE weaken #-}
@@ -709,20 +581,30 @@ weaken (Fin i) = Fin i
 -- multiple steps. Use of this function will generally require an
 -- explicit type signature in order to know which @n@ to use.
 --
--- The opposite of this function is 'maxViewLE'.
-weakenLE :: NatLE m n => Fin m -> Fin n
+-- The opposite of this function is 'maxViewLE'. When the choice
+-- of @m@ and @n@ is held constant, we have that:
+--
+-- > maxViewLE . weakenLE      == Just
+-- > fmap weakenLE . maxViewLE == (\i -> if i < m then Just i else Nothing)
+--
+weakenLE :: (NatLE n MaxBoundInt32, NatLE m n) => Fin m -> Fin n
 weakenLE (Fin i) = Fin i
 {-# INLINE weakenLE #-}
 
 
+----------------------------------------------------------------
 -- | The predecessor view. This strengthens the type by shifting
 -- everything down by one:
 --
--- > predView 0 == Nothing
--- > predView x == Just (x-1)  -- morally speaking...
+-- > predView 0 = Nothing
+-- > predView x = Just (x-1)  -- morally speaking...
 --
 -- The opposite of this function is 'widen'.
-predView :: Succ m n => Fin n -> Maybe (Fin m)
+--
+-- > predView . widen         == Just
+-- > maybe 0 widen . predView == id
+--
+predView :: (NatLE n MaxBoundInt32, Succ m n) => Fin n -> Maybe (Fin m)
 predView (Fin i)
     | i <= 0    = Nothing
     | otherwise = Just $! Fin (i-1)
@@ -733,112 +615,189 @@ predView (Fin i)
 
 
 -- | Embed a finite domain into the next larger one, keeping the
--- same position relative to 'maxBound'. That is:
+-- same position relative to 'maxBound'. That is, we shift everything
+-- up by one:
 --
 -- > fromFin (widen x) == 1 + fromFin x
 --
--- /N.B.,/ This function may not do what you think when @m@ or @n@
--- are \"too large\". The above law only holds when the right-hand
--- side would still fit in 'Int' without overflowing. In other
--- words, if @x@ is the @maxBound@, then this is the identity
--- function.
---
 -- The opposite of this function is 'predView'.
-widen :: Succ m n => Fin m -> Fin n
-widen (Fin i) = Fin (1 + min i (maxBound-1))
+--
+-- > predView . widen         == Just
+-- > maybe 0 widen . predView == id
+--
+widen :: (NatLE n MaxBoundInt32, Succ m n) => Fin m -> Fin n
+widen (Fin i) = Fin (i+1)
 {-# INLINE widen #-}
 
 
 -- | Embed a finite domain into any larger one, keeping the same
--- position relative to 'maxBound'. That is:
+-- position relative to 'maxBound'. That is,
 --
 -- > maxBoundOf y - fromFin y == maxBoundOf x - fromFin x
 -- >     where y = widenLE x
 --
--- /N.B.,/ This function may not do what you think when @m@ or @n@
--- are \"too large\". Namely, since we treat all @Fin m'@ as the
--- same when @m'@ is too large, that means this will be effectively
--- the identity function. However, the law above still holds in
--- that case, since 'maxBoundOf' returns the largest actual inhabitant
--- of @Fin m'@.
---
 -- Use of this function will generally require an explicit type
 -- signature in order to know which @n@ to use.
-widenLE :: NatLE m n => Fin m -> Fin n
+widenLE
+    :: (NatLE m MaxBoundInt32, NatLE n MaxBoundInt32, NatLE m n)
+    => Fin m -> Fin n
+-- BUG: Could not deduce (NatLE m MaxBoundInt32) from the context (NatLE n MaxBoundInt32, NatLE m n); so we have to add it.
 widenLE x@(Fin i) = y
     where
     y = Fin (maxBoundOf y - maxBoundOf x + i)
 {-# INLINE widenLE #-}
 
 
-
-{- -- TODO: figure out how to fix the types of these so that we can provide the monoidal structure of the (skeleton of the) augmented simplex category <http://ncatlab.org/nlab/show/simplex+category>:
--}
-
+----------------------------------------------------------------
 -- BUG: Could not deduce (NatLE m o) from the context (Add m n o)
--- HACK: the @Nat o@ is not required, but it should be for consistency...
 -- | A type-signature variant of 'weakenLE' because we cannot
 -- automatically deduce that @Add m n o ==> NatLE m o@. This is the
 -- left half of 'plus'.
-weakenPlus :: Add m n o => Fin m -> Fin o
+weakenPlus :: (NatLE o MaxBoundInt32, Add m n o) => Fin m -> Fin o
 weakenPlus (Fin i) = Fin i
 {-# INLINE weakenPlus #-}
 
 
 -- BUG: Could not deduce (NatLE n o) from the context (Add m n o)
--- HACK: the @Nat o@ is not required, but it should be for consistency...
+-- BUG: Could not deduce (NatLE m MaxBoundInt32),...; so we have to add it.
 -- | A type-signature variant of 'widenLE' because we cannot
 -- automatically deduce that @Add m n o ==> NatLE n o@. This is the
 -- right half of 'plus'.
-widenPlus :: Add m n o => Fin n -> Fin o
+widenPlus
+    :: ( NatLE m MaxBoundInt32, NatLE n MaxBoundInt32, NatLE o MaxBoundInt32
+       , Add m n o)
+    => Fin n -> Fin o
 widenPlus = widenPlus_
     where
     -- HACK: Hiding the use of -XScopedTypeVariables from Haddock
-    widenPlus_ :: forall m n o. Add m n o => Fin n -> Fin o
+    widenPlus_ :: forall m n o
+               .  (NatLE m MaxBoundInt32, NatLE n MaxBoundInt32, Add m n o)
+               => Fin n -> Fin o
     widenPlus_ y = Fin (maxBoundOf (__::Fin m) + fromFin y)
     {-# INLINE widenPlus_ #-}
 {-# INLINE widenPlus #-}
 
 
 -- BUG: Could not deduce (NatLE m o, NatLE n o) from the context (Add m n o)
--- HACK: the @Nat o@ is not required, but it should be for consistency...
+-- BUG: Could not deduce (NatLE m MaxBoundInt32),...; so we have to add it.
 -- | The ordinal-sum functor, on objects. This internalizes the
 -- disjoint union, mapping @Fin m + Fin n@ into @Fin(m+n)@ by
 -- placing the image of the summands next to one another in the
 -- codomain, thereby preserving the structure of both summands.
-plus :: Add m n o => Either (Fin m) (Fin n) -> Fin o
+plus
+    :: ( NatLE m MaxBoundInt32, NatLE n MaxBoundInt32, NatLE o MaxBoundInt32
+       , Add m n o)
+    => Either (Fin m) (Fin n) -> Fin o
 plus = either weakenPlus widenPlus
 {-# INLINE plus #-}
 
 
+-- BUG: Could not deduce (NatLE m MaxBoundInt32),...; so we have to add it.
+-- | The inverse of 'plus'.
+unplus
+    :: ( NatLE m MaxBoundInt32, NatLE n MaxBoundInt32, NatLE o MaxBoundInt32
+       , Add m n o)
+    => Fin o -> Either (Fin m) (Fin n)
+unplus = unplus_
+    where
+    -- HACK: Hiding the use of -XScopedTypeVariables from Haddock
+    unplus_ :: forall m n o. (NatLE m MaxBoundInt32)
+            => Fin o -> Either (Fin m) (Fin n)
+    unplus_ (Fin i)
+        | i <= x    = Left  $! Fin i
+        | otherwise = Right $! Fin (i-x)
+        where
+        x = maxBoundOf (__ :: Fin m)
+    {-# INLINE unplus_ #-}
+{-# INLINE unplus #-}
+
+
 -- BUG: Could not deduce (NatLE m o, NatLE n o) from the context (Add m n o)
 -- BUG: Ditto for (Add m' n' o')
--- HACK: the @Nat o@ and @Nat o'@ aren't required, but should be for consistency...
--- | The ordinal-sum functor, on morphisms. This is similar to
+-- BUG: Could not deduce (NatLE m MaxBoundInt32),...; so we have to add it.
+-- | The ordinal-sum functor, on morphisms. If we view the maps as
+-- bipartite graphs, then the new map is the result of placing the
+-- left and right maps next to one another. This is similar to
 -- @(+++)@ from "Control.Arrow".
-fplus :: forall m n o m' n' o'. (Add m n o, Add m' n' o')
-       => (Fin m -> Fin m') -- ^ The left morphism
-       -> (Fin n -> Fin n') -- ^ The right morphism
-       -> Fin o -> Fin o'
-fplus f g (Fin i)
-    | i <= x    = weakenPlus (f $! Fin i)
-    | otherwise = widenPlus  (g $! Fin (i-x))
+fplus
+    :: ( NatLE m  MaxBoundInt32, NatLE n  MaxBoundInt32, NatLE o  MaxBoundInt32
+       , NatLE m' MaxBoundInt32, NatLE n' MaxBoundInt32, NatLE o' MaxBoundInt32
+       , Add m n o, Add m' n' o')
+    => (Fin m -> Fin m') -- ^ The left morphism
+    -> (Fin n -> Fin n') -- ^ The right morphism
+    -> (Fin o -> Fin o') -- ^
+fplus = fplus_
     where
-    x = maxBoundOf (__ :: Fin m)
+    -- HACK: Hiding the use of -XScopedTypeVariables from Haddock
+    fplus_ :: forall m n o m' n' o'
+           . ( NatLE m  MaxBoundInt32
+             , NatLE n  MaxBoundInt32
+             , NatLE o  MaxBoundInt32
+             , NatLE m' MaxBoundInt32
+             , NatLE n' MaxBoundInt32
+             , NatLE o' MaxBoundInt32
+             , Add m n o, Add m' n' o')
+           => (Fin m -> Fin m') -> (Fin n -> Fin n') -> Fin o -> Fin o'
+    fplus_ f g (Fin i)
+        | i <= x    = weakenPlus (f $! Fin i)
+        | otherwise = widenPlus  (g $! Fin (i-x))
+        where
+        x = maxBoundOf (__ :: Fin m)
+    {-# INLINE fplus_ #-}
+{-# INLINE fplus #-}
 
 
--- | The inverse of 'plus'.
-unplus :: forall m n o. Add m n o => Fin o -> Either (Fin m) (Fin n)
-unplus (Fin i)
-    | i <= x    = Left  $! Fin i
-    | otherwise = Right $! Fin (i-x)
-    where
-    x = maxBoundOf (__ :: Fin m)
+-- TODO: (Fin m, Fin n) <-> Fin (Times m n)
+
+----------------------------------------------------------------
+{- -- Agda's version:
+thin : {n : Nat} -> Fin (suc n) -> Fin n -> Fin (suc n)
+thin zero    j       = suc j
+thin (suc i) zero    = zero
+thin (suc i) (suc j) = suc (thin i j)
+-}
+-- | The \"face maps\" for @Fin@ viewed as the standard simplices
+-- (aka: the thinning view). Traditionally spelled with delta or
+-- epsilon. For each @i@, it is the unique injective monotonic map
+-- that skips @i@. That is,
+--
+-- > thin i = (\j -> if j < i then j else succ j)  -- morally speaking...
+--
+-- Which has the important universal property that:
+--
+-- > thin i j /= i
+--
+thin :: (NatLE n MaxBoundInt32, Succ m n) => Fin n -> Fin m -> Fin n
+thin i j
+    | weaken j < i = weaken j
+    | otherwise    = succ (weaken j)
+{-# INLINE thin #-}
+
+
+-- BUG: Could not deduce (NatLE m MaxBoundInt32),...; so we have to add it.
+-- | The \"degeneracy maps\" for @Fin@ viewed as the standard
+-- simplices. Traditionally spelled with sigma or eta. For each
+-- @i@, it is the unique surjective monotonic map that covers @i@
+-- twice. That is,
+--
+-- > thick i = (\j -> if j <= i then j else pred j)  -- morally speaking...
+--
+-- Which has the important universal property that:
+--
+-- > thick i (i+1) == i
+--
+thick
+    :: (NatLE m MaxBoundInt32, NatLE n MaxBoundInt32, Succ m n)
+    => Fin m -> Fin n -> Fin m
+thick i j =
+    case maxView (if j <= weaken i then j else pred j) of
+    Just j' -> j'
+    Nothing -> _thick_impossible
+{-# INLINE thick #-}
+
 
 
 {-
-Agda also provides the following views:
-
 -- ueh? this is just another way to test for n==0; why bother with this? The only possible use I could see is to say, hey I have an actual value of Fin n, therefore n can't be zero... but then if you had a purported value of Fin n and that wasn't the case, then you'd have a contradiction to work with, ne?
 -- The non zero view, which is used for defining compare...
 data NonEmptyView : {n : Nat} -> Fin n -> Set where
@@ -847,33 +806,6 @@ data NonEmptyView : {n : Nat} -> Fin n -> Set where
 nonEmpty : {n : Nat}(i : Fin n) -> NonEmptyView i
 nonEmpty zero    = ne
 nonEmpty (suc _) = ne
-
-
--- | The \"face maps\" for @Fin@ viewed as the standard simplices.
--- For each @i@, it is the unique injective monotonic map that skips
--- @i@. Traditionally spelled with delta or epsilon. AKA, the
--- thinning view.
---
--- > thin i j == if j < i then weaken j else succ (weaken j)
--- > thin i j /= i
---
-thin : {n : Nat} -> Fin (suc n) -> Fin n -> Fin (suc n)
-thin zero    j       = suc j
-thin (suc i) zero    = zero
-thin (suc i) (suc j) = suc (thin i j)
-
--- TODO:
--- | The \"degeneracy maps\" for @Fin@ viewed as the standard
--- simplices. For each @i@, it is the unique surjective monotonic
--- map that covers @i@ twice. Traditionally spelled with sigma or
--- eta.
---
--- > thick i j == if j <= i then strengthen j else strengthen (pred j)
--- > thick i (i+1) == i
---
-thick : {n : Nat} -> Fin n -> Fin (suc n) -> Fin n
-
--- <http://ncatlab.org/nlab/show/simplex+category>
 
 
 data EqView : {n : Nat} -> Fin n -> Fin n -> Set where
@@ -895,10 +827,16 @@ compare (suc i) (suc .(thin i j)) | notequal j = notequal (suc j)
 -- Error messages
 
 __ :: a
-__ = error "Data.Number.Fin.Small: attempted to evaluate type token"
+__ = error "Data.Number.Fin.Int32: attempted to evaluate type token"
 {-# NOINLINE __ #-}
 -- TODO: use extensible-exceptions instead of 'error'
 -- TODO: use Proxy instead of these undefined values...
+
+_thick_impossible :: a
+_thick_impossible =
+    error "Data.Number.Fin.Int32.thick: the impossible happened"
+{-# NOINLINE _thick_impossible #-}
+-- TODO: use extensible-exceptions instead of 'error'
 
 _succ_maxBound :: String -> a
 _succ_maxBound ty =

@@ -8,7 +8,6 @@
            , UndecidableInstances
            , FunctionalDependencies
            , TypeOperators
-           , RankNTypes
            #-}
 {-
 -- for reifyNat...
