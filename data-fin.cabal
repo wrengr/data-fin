@@ -48,9 +48,14 @@ Library
     Hs-Source-Dirs:    src
     Exposed-Modules:   Data.Number.Fin
                      , Data.Number.Fin.Integer
-                     -- Data.Number.Fin.Int8
-                     -- Data.Number.Fin.Int16
+                     , Data.Number.Fin.Int8
+                     , Data.Number.Fin.Int16
                      , Data.Number.Fin.Int32
+                     , Data.Number.Fin.Int64
+                     -- Data.Number.Fin.Word8
+                     -- Data.Number.Fin.Word16
+                     -- Data.Number.Fin.Word32
+                     -- Data.Number.Fin.Word64
                      -- Data.Number.Fin.TyInteger
                      -- Data.Number.Fin.TyBinary
                      , Data.Number.Fin.TyDecimal
