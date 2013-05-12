@@ -70,7 +70,7 @@ predCW x
 
 
 -- TODO: does 'elemIndex' fail if the resulting Int would overflow?
-cw2mbint :: Integral a => CalkinWilf a -> Maybe Int
+cw2mbint :: (Show a, Integral a) => CalkinWilf a -> Maybe Int
 {-# SPECIALIZE cw2mbint :: CalkinWilf Integer -> Maybe Int #-}
 cw2mbint q =
     case compare q 0 of
@@ -81,11 +81,11 @@ cw2mbint q =
     -- Using a local definition to try to avoid memoization
     boolseqs = [] : [ b:bs | bs <- boolseqs, b <- [False,True]]
 
-cw2bits :: Integral a => CalkinWilf a -> [Bool]
+cw2bits :: (Show a, Integral a) => CalkinWilf a -> [Bool]
 {-# SPECIALIZE cw2bits :: CalkinWilf Integer -> [Bool] #-}
 cw2bits (CalkinWilf q) = snd (igcd (numerator q) (denominator q))
 
-igcd :: Integral a => a -> a -> (a,[Bool])
+igcd :: (Show a, Integral a) => a -> a -> (a,[Bool])
 {-# SPECIALIZE igcd :: Integer -> Integer -> (Integer,[Bool]) #-}
 igcd 0 0 = (0,[])
 igcd m n 
@@ -128,7 +128,7 @@ bits2cw bs =
 
 
 ----------------------------------------------------------------
-instance Integral a => UpwardEnum (CalkinWilf a) where
+instance (Show a, Integral a) => UpwardEnum (CalkinWilf a) where
     succ = Just . succCW
     -- BUG: What about when 'cw2mbint' fails?
     x `succeeds` y = cw2mbint x > cw2mbint y
@@ -136,7 +136,7 @@ instance Integral a => UpwardEnum (CalkinWilf a) where
     {-# INLINE succeeds #-}
 
 
-instance Integral a => DownwardEnum (CalkinWilf a) where
+instance (Show a, Integral a) => DownwardEnum (CalkinWilf a) where
     pred = Just . predCW
     -- BUG: What about when 'cw2mbint' fails?
     x `precedes` y = cw2mbint x < cw2mbint y
@@ -144,14 +144,14 @@ instance Integral a => DownwardEnum (CalkinWilf a) where
     {-# INLINE precedes #-}
 
 
-instance Integral a => Enum (CalkinWilf a) where
+instance (Show a, Integral a) => Enum (CalkinWilf a) where
     toEnum   = Just . int2cw
     fromEnum = cw2mbint
     {-# INLINE toEnum #-}
     {-# INLINE fromEnum #-}
 
 
-instance Integral a => Prelude.Enum (CalkinWilf a) where
+instance (Show a, Integral a) => Prelude.Enum (CalkinWilf a) where
     succ     = succCW
     pred     = predCW
     toEnum   = int2cw

@@ -66,12 +66,12 @@ Library
                      , Data.Number.CalkinWilf
     Other-Modules:     Data.Number.Fin.TyOrdering
     
-    Build-Depends:     tagged         >= 0.2.3   && < 0.5
-                     , reflection     >= 1.1.6   && < 1.2
+    Build-Depends:     tagged         >= 0.2.3   && < 0.7
+                     , reflection     >= 1.1.6   && < 1.4
                      -- N.B., major smallcheck API break between 0.5 and 0.6
                      , smallcheck     >= 0.4     && < 0.7
                      , lazysmallcheck >= 0.5     && < 0.7
-                     , QuickCheck     >= 2.4.1.1 && < 2.5
+                     , QuickCheck     >= 2.4.1.1 && < 2.7
     
     -- I think this is all that needs doing to get rid of the warnings?
     if flag(base4)
