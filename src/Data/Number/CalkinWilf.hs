@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 ----------------------------------------------------------------
---                                                    2012.12.29
+--                                                    2013.05.12
 -- |
 -- Module      :  Data.Number.CalkinWilf
--- Copyright   :  2012 wren ng thornton
+-- Copyright   :  2012--2013 wren ng thornton
 -- License     :  BSD3
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -35,6 +35,7 @@ import Data.List (elemIndex)
 -- rectified (or at least mitigated), but this remains to be done.
 newtype CalkinWilf a = CalkinWilf (Ratio a)
     deriving (Read, Show, Eq, Ord, Num, Fractional, Real, RealFrac)
+    -- BUG: Haddock does a horrible job with the generated contexts...
 
 
 -- | Return the underlying 'Ratio'. Not using record syntax to
@@ -70,7 +71,7 @@ predCW x
 
 
 -- TODO: does 'elemIndex' fail if the resulting Int would overflow?
-cw2mbint :: (Show a, Integral a) => CalkinWilf a -> Maybe Int
+cw2mbint :: Integral a => CalkinWilf a -> Maybe Int
 {-# SPECIALIZE cw2mbint :: CalkinWilf Integer -> Maybe Int #-}
 cw2mbint q =
     case compare q 0 of
@@ -81,15 +82,17 @@ cw2mbint q =
     -- Using a local definition to try to avoid memoization
     boolseqs = [] : [ b:bs | bs <- boolseqs, b <- [False,True]]
 
-cw2bits :: (Show a, Integral a) => CalkinWilf a -> [Bool]
+
+cw2bits :: Integral a => CalkinWilf a -> [Bool]
 {-# SPECIALIZE cw2bits :: CalkinWilf Integer -> [Bool] #-}
 cw2bits (CalkinWilf q) = snd (igcd (numerator q) (denominator q))
 
-igcd :: (Show a, Integral a) => a -> a -> (a,[Bool])
+
+igcd :: Integral a => a -> a -> (a,[Bool])
 {-# SPECIALIZE igcd :: Integer -> Integer -> (Integer,[Bool]) #-}
 igcd 0 0 = (0,[])
 igcd m n 
-    | m < 0 || n < 0 = error $ "igcd "++show m++" "++show n++" is undefined"
+    | m < 0 || n < 0 = error "igcd is undefined on negative arguments"
     | otherwise =
         case compare m n of
         LT -> second (False:) (igcd m (n-m))
@@ -128,7 +131,7 @@ bits2cw bs =
 
 
 ----------------------------------------------------------------
-instance (Show a, Integral a) => UpwardEnum (CalkinWilf a) where
+instance Integral a => UpwardEnum (CalkinWilf a) where
     succ = Just . succCW
     -- BUG: What about when 'cw2mbint' fails?
     x `succeeds` y = cw2mbint x > cw2mbint y
@@ -136,7 +139,7 @@ instance (Show a, Integral a) => UpwardEnum (CalkinWilf a) where
     {-# INLINE succeeds #-}
 
 
-instance (Show a, Integral a) => DownwardEnum (CalkinWilf a) where
+instance Integral a => DownwardEnum (CalkinWilf a) where
     pred = Just . predCW
     -- BUG: What about when 'cw2mbint' fails?
     x `precedes` y = cw2mbint x < cw2mbint y
@@ -144,14 +147,14 @@ instance (Show a, Integral a) => DownwardEnum (CalkinWilf a) where
     {-# INLINE precedes #-}
 
 
-instance (Show a, Integral a) => Enum (CalkinWilf a) where
+instance Integral a => Enum (CalkinWilf a) where
     toEnum   = Just . int2cw
     fromEnum = cw2mbint
     {-# INLINE toEnum #-}
     {-# INLINE fromEnum #-}
 
 
-instance (Show a, Integral a) => Prelude.Enum (CalkinWilf a) where
+instance Integral a => Prelude.Enum (CalkinWilf a) where
     succ     = succCW
     pred     = predCW
     toEnum   = int2cw
