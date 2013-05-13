@@ -2,10 +2,10 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs -XMagicHash #-}
 {-# LANGUAGE CPP #-}
 ----------------------------------------------------------------
---                                                    2012.12.28
+--                                                    2013.05.12
 -- |
 -- Module      :  Prelude.SafeEnum
--- Copyright   :  2012 wren ng thornton
+-- Copyright   :  2012--2013 wren ng thornton
 -- License     :  BSD3
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -70,10 +70,10 @@ infix 4 `precedes`, `succeeds`
 
 ----------------------------------------------------------------
 -- | A class for upward enumerable types. That is, we can enumerate
--- larger and larger values, eventually getting all the larger
--- values. We require that 'succeeds' forms a strict partial order.
--- That is, it must obey the following laws (N.B., if the first two
--- laws hold, then the third one follows for free):
+-- larger and larger values, eventually getting all of them. We
+-- require that 'succeeds' forms a strict partial order. That is,
+-- it must obey the following laws (N.B., if the first two laws
+-- hold, then the third one follows for free):
 --
 -- > if x `succeeds` y && y `succeeds` z then x `succeeds` z
 -- > if x `succeeds` y then not (y `succeeds` x)
@@ -148,10 +148,10 @@ class UpwardEnum a where
 
 ----------------------------------------------------------------
 -- | A class for downward enumerable types. That is, we can enumerate
--- smaller and smaller values, eventually getting all the smaller
--- values. We require that 'precedes' forms a strict partial order.
--- That is, it must obey the following laws (N.B., if the first two
--- laws hold, then the third one follows for free):
+-- smaller and smaller values, eventually getting all of them. We
+-- require that 'precedes' forms a strict partial order. That is,
+-- it must obey the following laws (N.B., if the first two laws
+-- hold, then the third one follows for free):
 --
 -- > if x `precedes` y && y `precedes` z then x `precedes` z
 -- > if x `precedes` y then not (y `precedes` x)
@@ -227,15 +227,31 @@ class DownwardEnum a where
 -- | A class for types with a linear enumeration order. We require
 -- that the partial orders of the superclasses agree:
 --
--- > x `succeeds` y == y `precedes` x
+-- > x `succeeds` y  ==  y `precedes` x
+--
+-- That the enumeration order is preserved\/reflected:
+--
+-- > i `succeeds` j  ==  toEnum   i `succeeds` toEnum   j
+-- > x `succeeds` y  ==  fromEnum x `succeeds` fromEnum y
+--
+-- And that 'toEnum' and 'fromEnum' form a weak isomorphism; i.e.,
+-- for some @p@ and @q@, the following must hold:
+--
+-- > fromEnum <=< toEnum    ==  (\i -> if p i then Just i else Nothing)
+-- > toEnum   <=< fromEnum  ==  (\x -> if q x then Just x else Nothing)
+--
+-- In other words, the following type-restricted functions form an
+-- isomorphism of linear orderings.
+--
+-- > toEnum'   :: {i :: Int | toEnum   i == Just _} -> a
+-- > fromEnum' :: {x :: a   | fromEnum x == Just _} -> Int
 --
 -- Minimal complete definition: 'toEnum', 'fromEnum'. N.B., the
--- default methods only make sense for types where the @Just@-restriction
--- of 'toEnum' and 'fromEnum' forms an 'Enum'-isomorphism. That is,
--- if we restrict @a@ to the subset where @fromEnum x = Just _@ and
--- we restrict 'Int' to the subset where @toEnum i = Just _@, then
--- 'toEnum' and 'fromEnum' form a bijection which preserves\/reflects
--- the enumeration order.
+-- default definitions for 'enumFromThen' and 'enumFromThenTo' only
+-- make sense when the type @a@ is \"smaller\" than 'Int' (i.e.,
+-- 'fromEnum' always succeeds); if 'fromEnum' ever fails, then you
+-- must override the defaults in order to correctly infer the stride
+-- for values which cannot be converted to 'Int'.
 class (UpwardEnum a, DownwardEnum a) => Enum a where
 
     -- | Convert from an 'Int'.
