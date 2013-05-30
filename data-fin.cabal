@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren ng thornton <wren@community.haskell.org>    ~ 2013.03.12
+-- wren ng thornton <wren@community.haskell.org>    ~ 2013.05.29
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -61,13 +61,11 @@ Library
                      , Data.Number.Fin.TyDecimal
                      -- TODO: OfType should be moved elsewhere if we don't use it...
                      , Data.Reflection.OfType
-                     -- TODO: SafeEnum needs to be moved upstream
-                     , Prelude.SafeEnum
-                     , Data.Number.CalkinWilf
     Other-Modules:     Data.Number.Fin.TyOrdering
     
     Build-Depends:     tagged         >= 0.2.3   && < 0.7
                      , reflection     >= 1.1.6   && < 1.4
+                     , prelude-safeenum < 0.2
                      -- N.B., major smallcheck API break between 0.5 and 0.6
                      , smallcheck     >= 0.4     && < 0.7
                      , lazysmallcheck >= 0.5     && < 0.7
