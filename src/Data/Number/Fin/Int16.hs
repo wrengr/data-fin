@@ -7,8 +7,13 @@
            , Rank2Types
            , UndecidableInstances
            #-}
+
+#if __GLASGOW_HASKELL__ >= 701
+-- N.B., Data.Proxy and Test.QuickCheck aren't "safe".
+{-# LANGUAGE Trustworthy #-}
+#endif
 ----------------------------------------------------------------
---                                                    2013.03.20
+--                                                    2013.05.29
 -- |
 -- Module      :  Data.Number.Fin.Int16
 -- Copyright   :  2012--2013 wren ng thornton

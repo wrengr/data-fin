@@ -5,8 +5,13 @@
            , FlexibleInstances
            , FunctionalDependencies
            #-}
+
+{-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Safe #-}
+#endif
 ----------------------------------------------------------------
---                                                    2013.03.12
+--                                                    2013.05.29
 -- |
 -- Module      :  Data.Number.Fin.TyOrdering
 -- Copyright   :  2012--2013 wren ng thornton,

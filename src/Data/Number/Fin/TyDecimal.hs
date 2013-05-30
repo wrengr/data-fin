@@ -13,8 +13,14 @@
 -- for reifyNat...
 {-# LANGUAGE RankNTypes #-}
 -}
+
+{-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 701
+-- N.B., Data.Proxy isn't "safe".
+{-# LANGUAGE Trustworthy #-}
+#endif
 ----------------------------------------------------------------
---                                                    2013.03.12
+--                                                    2013.05.29
 -- |
 -- Module      :  Data.Number.Fin.TyDecimal
 -- Copyright   :  2012--2013 wren ng thornton,
