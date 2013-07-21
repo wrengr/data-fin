@@ -5,3 +5,10 @@
 * ? Implement maxViewPlus, predViewLE, predViewPlus
 * Remove extraneous modules
 * Use extensible exceptions instead of `error`
+* Add
+    fold : ∀ (T : ℕ → Set) {m} →
+        (∀ {n} → T n → T (suc n)) →
+        (∀ {n} → T (suc n)) →
+        Fin m → T m
+    fold T f x zero    = x
+    fold T f x (suc i) = f (fold T f x i)
