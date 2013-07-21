@@ -12,7 +12,7 @@
 {-# LANGUAGE Trustworthy #-}
 #endif
 ----------------------------------------------------------------
---                                                    2013.05.29
+--                                                    2013.07.20
 -- |
 -- Module      :  Data.Number.Fin.Integer
 -- Copyright   :  2012--2013 wren ng thornton
@@ -421,7 +421,7 @@ toFin = toFin_
 
 -- | Safely embed a number into @Fin n@. This variant of 'toFin'
 -- uses a proxy to avoid the need for type signatures.
-toFinProxy :: Nat n => Proxy n -> Integer -> Maybe (Fin n)
+toFinProxy :: Nat n => proxy n -> Integer -> Maybe (Fin n)
 toFinProxy _ = toFin
 {-# INLINE toFinProxy #-}
 
@@ -717,6 +717,7 @@ fplus = fplus_
     {-# INLINE fplus_ #-}
 {-# INLINE fplus #-}
 
+-- TODO: unfplus :: (Fin o -> Fin o') -> (Fin m -> Fin m', Fin n -> Fin n')
 
 -- TODO: (Fin m, Fin n) <-> Fin (Times m n)
 

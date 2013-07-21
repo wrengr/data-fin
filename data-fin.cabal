@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren ng thornton <wren@community.haskell.org>    ~ 2013.05.29
+-- wren ng thornton <wren@community.haskell.org>    ~ 2013.07.20
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -60,7 +60,7 @@ Library
                      -- Data.Number.Fin.TyBinary
                      , Data.Number.Fin.TyDecimal
                      -- TODO: OfType should be moved elsewhere if we don't use it...
-                     , Data.Reflection.OfType
+                     -- Data.Reflection.OfType
     Other-Modules:     Data.Number.Fin.TyOrdering
     
     Build-Depends:     tagged         >= 0.2.3   && < 0.7

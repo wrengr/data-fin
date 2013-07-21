@@ -1,0 +1,7 @@
+* Implement the Word* variants
+* Implement (Fin m, Fin n) <-> Fin (Times m n)
+* Implement unfplus
+* ? Implement compare : {n : Nat}(i j : Fin n) -> EqView i j
+* ? Implement maxViewPlus, predViewLE, predViewPlus
+* Remove extraneous modules
+* Use extensible exceptions instead of `error`

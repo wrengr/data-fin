@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                    2013.03.20
+--                                                    2013.07.20
 -- |
 -- Module      :  Data.Number.Fin
 -- Copyright   :  2012--2013 wren ng thornton
@@ -18,7 +18,8 @@
 -- type families, is that those latter approaches introduce a lot
 -- of additional complexity for very little benefit. Using multiple
 -- different representations of finite sets in the same module seems
--- like an extremely uncommon use case.
+-- like an uncommon use case. Albeit, this impedes writing
+-- representation-agnostic functions...
 --
 -- When the underlying type can only represent finitely many values,
 -- this introduces many corner cases which makes reasoning about
