@@ -12,3 +12,4 @@
         Fin m → T m
     fold T f x zero    = x
     fold T f x (suc i) = f (fold T f x i)
+* Anything else from <http://www.cse.chalmers.se/~nad/repos/lib/src/Data/Fin.agda>?
