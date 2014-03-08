@@ -1,2 +1,4 @@
+0.1.1 (2014.03.07):
+    - Updated to work with SmallCheck >= 1.0 && < 1.2
 0.1.0 (2013.07.20):
 	- Initial release

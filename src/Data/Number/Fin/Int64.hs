@@ -3,6 +3,7 @@
            , DeriveDataTypeable
            , MultiParamTypeClasses
            , FlexibleContexts
+           , FlexibleInstances
            , CPP
            , Rank2Types
            , UndecidableInstances
@@ -13,10 +14,10 @@
 {-# LANGUAGE Trustworthy #-}
 #endif
 ----------------------------------------------------------------
---                                                    2013.05.29
+--                                                    2014.03.07
 -- |
 -- Module      :  Data.Number.Fin.Int64
--- Copyright   :  2012--2013 wren ng thornton
+-- Copyright   :  2012--2014 wren ng thornton
 -- License     :  BSD3
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -78,6 +79,9 @@ import Data.Reflection (Reifies(reflect), reify)
 import Control.Monad   (liftM)
 
 import qualified Test.QuickCheck as QC
+#if (MIN_VERSION_smallcheck(1,0,0))
+import Test.SmallCheck.Series ((>>-))
+#endif
 #if (MIN_VERSION_smallcheck(0,6,0))
 import qualified Test.SmallCheck.Series as SC
 #else
@@ -464,7 +468,31 @@ instance (NatLE n MaxBoundInt64, Nat n) => QC.Arbitrary (Fin n) where
 instance (NatLE n MaxBoundInt64, Nat n) => QC.CoArbitrary (Fin n) where
     coarbitrary (Fin n) = QC.variant n
 
+#if (MIN_VERSION_smallcheck(1,0,0))
+instance (NatLE n MaxBoundInt64, Nat n, Monad m) => SC.Serial m (Fin n) where
+    -- SC.series :: Series m (Fin n)
+    series = SC.generate $ \d ->
+        if d < 0
+        then [] -- paranoia.
+        else
+            case toFin (fromIntegral d) of
+            Nothing -> enumFromTo minBound maxBound
+            Just n  -> enumFromTo minBound n
 
+instance (NatLE n MaxBoundInt64, Nat n, Monad m) => SC.CoSerial m (Fin n) where
+    -- SC.coseries :: Series m b -> Series m (Fin n -> b)
+    coseries rs =
+        SC.alts0 rs >>- \z ->
+        SC.alts1 rs >>- \f ->
+        return $ \(Fin i) -> 
+            if i > 0
+            then
+                let j = Fin (i-1) :: Fin n
+                in f j `checking` j -- more paranoia; in case n==0 or i>n
+            else z
+
+#else
+-- (MAX_VERSION_smallcheck(0,6,2))
 instance (NatLE n MaxBoundInt64, Nat n) => SC.Serial (Fin n) where
     series d
         | d < 0     = [] -- paranoia.
@@ -482,9 +510,17 @@ instance (NatLE n MaxBoundInt64, Nat n) => SC.Serial (Fin n) where
         | z <- SC.alts0 rs d
         , f <- SC.alts1 rs d
         ]
+#endif
 
 instance (NatLE n MaxBoundInt64, Nat n) => LSC.Serial (Fin n) where
+    -- LSC.series :: Series (Fin n)
+    -- LSC.series :: Int -> Cons (Fin n)
+#if (MIN_VERSION_smallcheck(1,0,0))
+    series = LSC.drawnFrom . (`SC.list` SC.series)
+#else
+-- (MAX_VERSION_smallcheck(0,6,2))
     series = LSC.drawnFrom . SC.series
+#endif
 
 
 ----------------------------------------------------------------
