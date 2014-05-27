@@ -13,7 +13,7 @@
 --                                                    2013.01.04
 -- |
 -- Module      :  Data.Number.Fin.TyInteger
--- Copyright   :  2012--2013 wren ng thornton,
+-- Copyright   :  2012--2013 wren gayle romano,
 --                2004--2007 Oleg Kiselyov and Chung-chieh Shan
 -- License     :  BSD3
 -- Maintainer  :  wren@community.haskell.org

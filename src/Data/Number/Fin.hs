@@ -3,7 +3,7 @@
 --                                                    2013.07.20
 -- |
 -- Module      :  Data.Number.Fin
--- Copyright   :  2012--2013 wren ng thornton
+-- Copyright   :  2012--2013 wren gayle romano
 -- License     :  BSD3
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental

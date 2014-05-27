@@ -13,7 +13,7 @@
 --                                                    2013.05.29
 -- |
 -- Module      :  Data.Reflection.OfType
--- Copyright   :  2012--2013 wren ng thornton,
+-- Copyright   :  2012--2013 wren gayle romano,
 --                2009--2012 Edward Kmett,
 --                2012 Elliott Hird,
 --                2004 Oleg Kiselyov and Chung-chieh Shan

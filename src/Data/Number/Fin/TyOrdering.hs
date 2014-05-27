@@ -14,7 +14,7 @@
 --                                                    2013.05.29
 -- |
 -- Module      :  Data.Number.Fin.TyOrdering
--- Copyright   :  2012--2013 wren ng thornton,
+-- Copyright   :  2012--2013 wren gayle romano,
 --                2004--2007 Oleg Kiselyov and Chung-chieh Shan
 -- License     :  BSD3
 -- Maintainer  :  wren@community.haskell.org

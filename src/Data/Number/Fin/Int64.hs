@@ -17,7 +17,7 @@
 --                                                    2014.03.07
 -- |
 -- Module      :  Data.Number.Fin.Int64
--- Copyright   :  2012--2014 wren ng thornton
+-- Copyright   :  2012--2014 wren gayle romano
 -- License     :  BSD3
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
