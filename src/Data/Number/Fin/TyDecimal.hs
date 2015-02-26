@@ -20,10 +20,10 @@
 {-# LANGUAGE Trustworthy #-}
 #endif
 ----------------------------------------------------------------
---                                                    2013.05.29
+--                                                    2015.02.25
 -- |
 -- Module      :  Data.Number.Fin.TyDecimal
--- Copyright   :  2012--2013 wren gayle romano,
+-- Copyright   :  2012--2015 wren gayle romano,
 --                2004--2007 Oleg Kiselyov and Chung-chieh Shan
 -- License     :  BSD3
 -- Maintainer  :  wren@community.haskell.org
@@ -86,9 +86,9 @@ module Data.Number.Fin.TyDecimal
     , Add, add, minus, subtract
     -- ** comparison
     , Compare, compare, NatLE, NatLT, assert_NatLE, min, max
-    {-
     -- ** multiplication\/division
-    , Mul, mul, div, div10 -- mul10 ?
+    , Mul, mul, div -- div10, mul10 ?
+    {-
     -- ** exponentiation\/logarithm
     , Exp10, exp10, log10
     -- ** GCD
@@ -165,6 +165,18 @@ instance Digit_ D6
 instance Digit_ D7
 instance Digit_ D8
 instance Digit_ D9
+
+-- for internal use only.
+class    DigitNE0_ d
+instance DigitNE0_ D1
+instance DigitNE0_ D2
+instance DigitNE0_ D3
+instance DigitNE0_ D4
+instance DigitNE0_ D5
+instance DigitNE0_ D6
+instance DigitNE0_ D7
+instance DigitNE0_ D8
+instance DigitNE0_ D9
 
 -- for internal use only.
 class (Reifies n Integer, Nat_ n) => NatNE0_ n
@@ -385,6 +397,40 @@ instance (Digit_ d,  Nat_ (D9:.d))                 => Snoc D9     d  (D9:.d)
 instance (Digit_ d', Nat_ (x:.d), Nat_ (x:.d:.d')) => Snoc (x:.d) d' (x:.d:.d')
 
 
+class (Digit_ d, Nat_ y, Nat_ z) => Add_D d y z | d y -> z, d z -> y
+instance (Nat_ y)                            => Add_D D0 y y
+instance (Succ y y1)                         => Add_D D1 y y1
+instance (Succ y y1, Succ y1 y2)             => Add_D D2 y y2
+instance (Succ y y1, Succ y1 y2, Succ y2 y3) => Add_D D3 y y3
+instance
+    ( Succ y  y1, Succ y1 y2, Succ y2 y3
+    , Succ y3 y4
+    ) => Add_D D4 y y4
+instance
+    ( Succ y  y1, Succ y1 y2, Succ y2 y3
+    , Succ y3 y4, Succ y4 y5
+    ) => Add_D D5 y y5
+instance
+    ( Succ y  y1, Succ y1 y2, Succ y2 y3
+    , Succ y3 y4, Succ y4 y5, Succ y5 y6
+    ) => Add_D D6 y y6
+instance
+    ( Succ y  y1, Succ y1 y2, Succ y2 y3
+    , Succ y3 y4, Succ y4 y5, Succ y5 y6
+    , Succ y6 y7
+    ) => Add_D D7 y y7
+instance
+    ( Succ y  y1, Succ y1 y2, Succ y2 y3
+    , Succ y3 y4, Succ y4 y5, Succ y5 y6
+    , Succ y6 y7, Succ y7 y8
+    ) => Add_D D8 y y8
+instance
+    ( Succ y  y1, Succ y1 y2, Succ y2 y3
+    , Succ y3 y4, Succ y4 y5, Succ y5 y6
+    , Succ y6 y7, Succ y7 y8, Succ y8 y9
+    ) => Add_D D9 y y9
+
+
 -- | The primitive addition relation; by structural induction on
 -- the first argument. Modes:
 --
@@ -392,37 +438,16 @@ instance (Digit_ d', Nat_ (x:.d), Nat_ (x:.d:.d')) => Snoc (x:.d) d' (x:.d:.d')
 -- > Add_ x (z-x) z  -- when it's defined.
 --
 class (Nat_ x, Nat_ y, Nat_ z) => Add_ x y z | x y -> z, z x -> y
-instance (Nat_ y)                            => Add_ D0 y y
-instance (Succ y y1)                         => Add_ D1 y y1
-instance (Succ y y1, Succ y1 y2)             => Add_ D2 y y2
-instance (Succ y y1, Succ y1 y2, Succ y2 y3) => Add_ D3 y y3
-instance
-    ( Succ y  y1, Succ y1 y2, Succ y2 y3
-    , Succ y3 y4
-    ) => Add_ D4 y y4
-instance
-    ( Succ y  y1, Succ y1 y2, Succ y2 y3
-    , Succ y3 y4, Succ y4 y5
-    ) => Add_ D5 y y5
-instance
-    ( Succ y  y1, Succ y1 y2, Succ y2 y3
-    , Succ y3 y4, Succ y4 y5, Succ y5 y6
-    ) => Add_ D6 y y6
-instance
-    ( Succ y  y1, Succ y1 y2, Succ y2 y3
-    , Succ y3 y4, Succ y4 y5, Succ y5 y6
-    , Succ y6 y7
-    ) => Add_ D7 y y7
-instance
-    ( Succ y  y1, Succ y1 y2, Succ y2 y3
-    , Succ y3 y4, Succ y4 y5, Succ y5 y6
-    , Succ y6 y7, Succ y7 y8
-    ) => Add_ D8 y y8
-instance
-    ( Succ y  y1, Succ y1 y2, Succ y2 y3
-    , Succ y3 y4, Succ y4 y5, Succ y5 y6
-    , Succ y6 y7, Succ y7 y8, Succ y8 y9
-    ) => Add_ D9 y y9
+instance (Add_D D0 y z)        => Add_ D0 y y
+instance (Add_D D1 y z)        => Add_ D1 y y
+instance (Add_D D2 y z)        => Add_ D2 y y
+instance (Add_D D3 y z)        => Add_ D3 y y
+instance (Add_D D4 y z)        => Add_ D4 y y
+instance (Add_D D5 y z)        => Add_ D5 y y
+instance (Add_D D6 y z)        => Add_ D6 y y
+instance (Add_D D7 y z)        => Add_ D7 y y
+instance (Add_D D8 y z)        => Add_ D8 y y
+instance (Add_D D9 y z)        => Add_ D9 y y
 instance (NatNE0_ x, NatNE0_ (z:.dz), Add_ x y' z, Snoc y' dz y)
     => Add_ (x:.D0) y (z:.dz)
 instance (NatNE0_ x, Nat_ z, Add_ x y' zh, Snoc y' dy y, Add_ D1 (zh:.dy) z)
@@ -812,34 +837,269 @@ min _ _ = Proxy
 {-# INLINE min #-}
 
 
-{-
+
 ----------------------------------------------------------------
 -- TODO: should we offer @((floor.). div)@, @((ceiling.). div)@, @divMod@ ?
 
 
--- | Assert that @x * y == z@ where @x > 0@; by structural induction
--- on the first argument.
-class    (NatNE0_ x, Nat_ y, Nat_ z) => Mul_ x y z | x y -> z, x z -> y
-instance Nat_ y                      => Mul_ B1 y y
-instance (Mul_ x y zh, Snoc zh B0 z) => Mul_ (x:.B0) y z
-instance (Mul_F x y z, Mul_B x y z)  => Mul_ (x:.B1) y z
+-- | Assert that @d * x == y@ where @d > 0@ and @x > 0@; by structural
+-- induction on @x@. We need @NatNE0_ x@ to call the inductive
+-- hypothesis, but it's not so easy to assert @NatNE0_ y@ because
+-- we don't get that for free from 'Snoc'.
+class (DigitNE0_ d, NatNE0_ x, Nat_ y) => Mul_DF d x y | d x -> y
+-- impossible                                            Mul_DF D0 _  _
+instance (NatNE0_ x)                                  => Mul_DF D1 x  x
+-- impossible                                            Mul_DF D2 D0 _
+instance                                                 Mul_DF D2 D1 D2
+instance                                                 Mul_DF D2 D2 D4
+instance                                                 Mul_DF D2 D3 D6
+instance                                                 Mul_DF D2 D4 D8
+instance                                                 Mul_DF D2 D5 (D1:.D0)
+instance                                                 Mul_DF D2 D6 (D1:.D2)
+instance                                                 Mul_DF D2 D7 (D1:.D4)
+instance                                                 Mul_DF D2 D8 (D1:.D6)
+instance                                                 Mul_DF D2 D9 (D1:.D8)
+instance (Mul_DF D2 x yh,              Snoc yh  D0 y) => Mul_DF D2 (x:.D0) y
+instance (Mul_DF D2 x yh,              Snoc yh  D2 y) => Mul_DF D2 (x:.D1) y
+instance (Mul_DF D2 x yh,              Snoc yh  D4 y) => Mul_DF D2 (x:.D2) y
+instance (Mul_DF D2 x yh,              Snoc yh  D6 y) => Mul_DF D2 (x:.D3) y
+instance (Mul_DF D2 x yh,              Snoc yh  D8 y) => Mul_DF D2 (x:.D4) y
+instance (Mul_DF D2 x yh, Succ yh yh', Snoc yh' D0 y) => Mul_DF D2 (x:.D5) y
+instance (Mul_DF D2 x yh, Succ yh yh', Snoc yh' D2 y) => Mul_DF D2 (x:.D6) y
+instance (Mul_DF D2 x yh, Succ yh yh', Snoc yh' D4 y) => Mul_DF D2 (x:.D7) y
+instance (Mul_DF D2 x yh, Succ yh yh', Snoc yh' D6 y) => Mul_DF D2 (x:.D8) y
+instance (Mul_DF D2 x yh, Succ yh yh', Snoc yh' D8 y) => Mul_DF D2 (x:.D9) y
+-- impossible                                            Mul_DF D3 D0 _
+instance                                                 Mul_DF D3 D1 D3
+instance                                                 Mul_DF D3 D2 D6
+instance                                                 Mul_DF D3 D3 D9
+instance                                                 Mul_DF D3 D4 (D1:.D2)
+instance                                                 Mul_DF D3 D5 (D1:.D5)
+instance                                                 Mul_DF D3 D6 (D1:.D8)
+instance                                                 Mul_DF D3 D7 (D2:.D1)
+instance                                                 Mul_DF D3 D8 (D2:.D4)
+instance                                                 Mul_DF D3 D9 (D2:.D7)
+instance (Mul_DF D3 x yh,              Snoc yh  D0 y) => Mul_DF D3 (x:.D0) y
+instance (Mul_DF D3 x yh,              Snoc yh  D3 y) => Mul_DF D3 (x:.D1) y
+instance (Mul_DF D3 x yh,              Snoc yh  D6 y) => Mul_DF D3 (x:.D2) y
+instance (Mul_DF D3 x yh,              Snoc yh  D9 y) => Mul_DF D3 (x:.D3) y
+instance (Mul_DF D3 x yh, Succ yh yh', Snoc yh' D2 y) => Mul_DF D3 (x:.D4) y
+instance (Mul_DF D3 x yh, Succ yh yh', Snoc yh' D5 y) => Mul_DF D3 (x:.D5) y
+instance (Mul_DF D3 x yh, Succ yh yh', Snoc yh' D8 y) => Mul_DF D3 (x:.D6) y
+instance (Mul_DF D3 x yh, Add_D D2 yh yh', Snoc yh' D1 y) => Mul_DF D3 (x:.D7) y
+instance (Mul_DF D3 x yh, Add_D D2 yh yh', Snoc yh' D4 y) => Mul_DF D3 (x:.D8) y
+instance (Mul_DF D3 x yh, Add_D D2 yh yh', Snoc yh' D7 y) => Mul_DF D3 (x:.D9) y
+-- impossible                                            Mul_DF D4 D0 _
+instance                                                 Mul_DF D4 D1 D4
+instance                                                 Mul_DF D4 D2 D8
+instance                                                 Mul_DF D4 D3 (D1:.D2)
+instance                                                 Mul_DF D4 D4 (D1:.D6)
+instance                                                 Mul_DF D4 D5 (D2:.D0)
+instance                                                 Mul_DF D4 D6 (D2:.D4)
+instance                                                 Mul_DF D4 D7 (D2:.D8)
+instance                                                 Mul_DF D4 D8 (D3:.D2)
+instance                                                 Mul_DF D4 D9 (D3:.D6)
+instance (Mul_DF D4 x yh,              Snoc yh  D0 y) => Mul_DF D4 (x:.D0) y
+instance (Mul_DF D4 x yh,              Snoc yh  D4 y) => Mul_DF D4 (x:.D1) y
+instance (Mul_DF D4 x yh,              Snoc yh  D8 y) => Mul_DF D4 (x:.D2) y
+instance (Mul_DF D4 x yh, Succ yh yh', Snoc yh  D2 y) => Mul_DF D4 (x:.D3) y
+instance (Mul_DF D4 x yh, Succ yh yh', Snoc yh' D6 y) => Mul_DF D4 (x:.D4) y
+instance (Mul_DF D4 x yh, Add_D D2 yh yh', Snoc yh' D0 y) => Mul_DF D4 (x:.D5) y
+instance (Mul_DF D4 x yh, Add_D D2 yh yh', Snoc yh' D4 y) => Mul_DF D4 (x:.D6) y
+instance (Mul_DF D4 x yh, Add_D D2 yh yh', Snoc yh' D8 y) => Mul_DF D4 (x:.D7) y
+instance (Mul_DF D4 x yh, Add_D D3 yh yh', Snoc yh' D2 y) => Mul_DF D4 (x:.D8) y
+instance (Mul_DF D4 x yh, Add_D D3 yh yh', Snoc yh' D6 y) => Mul_DF D4 (x:.D9) y
+-- impossible                                            Mul_DF D5 D0 _
+instance                                                 Mul_DF D5 D1 D5
+instance                                                 Mul_DF D5 D2 (D1:.D0)
+instance                                                 Mul_DF D5 D3 (D1:.D5)
+instance                                                 Mul_DF D5 D4 (D2:.D0)
+instance                                                 Mul_DF D5 D5 (D2:.D5)
+instance                                                 Mul_DF D5 D6 (D3:.D0)
+instance                                                 Mul_DF D5 D7 (D3:.D5)
+instance                                                 Mul_DF D5 D8 (D4:.D0)
+instance                                                 Mul_DF D5 D9 (D4:.D5)
+instance (Mul_DF D5 x yh,              Snoc yh  D0 y) => Mul_DF D5 (x:.D0) y
+instance (Mul_DF D5 x yh,              Snoc yh  D5 y) => Mul_DF D5 (x:.D1) y
+instance (Mul_DF D5 x yh, Succ yh yh', Snoc yh  D0 y) => Mul_DF D5 (x:.D2) y
+instance (Mul_DF D5 x yh, Succ yh yh', Snoc yh  D5 y) => Mul_DF D5 (x:.D3) y
+instance (Mul_DF D5 x yh, Add_D D2 yh yh', Snoc yh' D0 y) => Mul_DF D5 (x:.D4) y
+instance (Mul_DF D5 x yh, Add_D D2 yh yh', Snoc yh' D5 y) => Mul_DF D5 (x:.D5) y
+instance (Mul_DF D5 x yh, Add_D D3 yh yh', Snoc yh' D0 y) => Mul_DF D5 (x:.D6) y
+instance (Mul_DF D5 x yh, Add_D D3 yh yh', Snoc yh' D5 y) => Mul_DF D5 (x:.D7) y
+instance (Mul_DF D5 x yh, Add_D D4 yh yh', Snoc yh' D0 y) => Mul_DF D5 (x:.D8) y
+instance (Mul_DF D5 x yh, Add_D D4 yh yh', Snoc yh' D5 y) => Mul_DF D5 (x:.D9) y
+-- impossible                                            Mul_DF D6 D0 _
+instance                                                 Mul_DF D6 D1 D6
+instance                                                 Mul_DF D6 D2 (D1:.D2)
+instance                                                 Mul_DF D6 D3 (D1:.D8)
+instance                                                 Mul_DF D6 D4 (D2:.D4)
+instance                                                 Mul_DF D6 D5 (D3:.D0)
+instance                                                 Mul_DF D6 D6 (D3:.D6)
+instance                                                 Mul_DF D6 D7 (D4:.D2)
+instance                                                 Mul_DF D6 D8 (D4:.D8)
+instance                                                 Mul_DF D6 D9 (D5:.D4)
+instance (Mul_DF D6 x yh,              Snoc yh  D0 y) => Mul_DF D6 (x:.D0) y
+instance (Mul_DF D6 x yh,              Snoc yh  D6 y) => Mul_DF D6 (x:.D1) y
+instance (Mul_DF D6 x yh, Succ yh yh', Snoc yh  D2 y) => Mul_DF D6 (x:.D2) y
+instance (Mul_DF D6 x yh, Succ yh yh', Snoc yh  D8 y) => Mul_DF D6 (x:.D3) y
+instance (Mul_DF D6 x yh, Add_D D2 yh yh', Snoc yh' D4 y) => Mul_DF D6 (x:.D4) y
+instance (Mul_DF D6 x yh, Add_D D3 yh yh', Snoc yh' D0 y) => Mul_DF D6 (x:.D5) y
+instance (Mul_DF D6 x yh, Add_D D3 yh yh', Snoc yh' D6 y) => Mul_DF D6 (x:.D6) y
+instance (Mul_DF D6 x yh, Add_D D4 yh yh', Snoc yh' D2 y) => Mul_DF D6 (x:.D7) y
+instance (Mul_DF D6 x yh, Add_D D4 yh yh', Snoc yh' D8 y) => Mul_DF D6 (x:.D8) y
+instance (Mul_DF D6 x yh, Add_D D5 yh yh', Snoc yh' D4 y) => Mul_DF D6 (x:.D9) y
+-- impossible                                            Mul_DF D7 D0 _
+instance                                                 Mul_DF D7 D1 D7
+instance                                                 Mul_DF D7 D2 (D1:.D4)
+instance                                                 Mul_DF D7 D3 (D2:.D1)
+instance                                                 Mul_DF D7 D4 (D2:.D8)
+instance                                                 Mul_DF D7 D5 (D3:.D5)
+instance                                                 Mul_DF D7 D6 (D4:.D2)
+instance                                                 Mul_DF D7 D7 (D4:.D9)
+instance                                                 Mul_DF D7 D8 (D5:.D6)
+instance                                                 Mul_DF D7 D9 (D6:.D3)
+instance (Mul_DF D7 x yh,              Snoc yh  D0 y) => Mul_DF D7 (x:.D0) y
+instance (Mul_DF D7 x yh,              Snoc yh  D7 y) => Mul_DF D7 (x:.D1) y
+instance (Mul_DF D7 x yh, Succ yh yh', Snoc yh  D4 y) => Mul_DF D7 (x:.D2) y
+instance (Mul_DF D7 x yh, Add_D D2 yh yh', Snoc yh  D1 y) => Mul_DF D7 (x:.D3) y
+instance (Mul_DF D7 x yh, Add_D D2 yh yh', Snoc yh' D8 y) => Mul_DF D7 (x:.D4) y
+instance (Mul_DF D7 x yh, Add_D D3 yh yh', Snoc yh' D5 y) => Mul_DF D7 (x:.D5) y
+instance (Mul_DF D7 x yh, Add_D D4 yh yh', Snoc yh' D2 y) => Mul_DF D7 (x:.D6) y
+instance (Mul_DF D7 x yh, Add_D D4 yh yh', Snoc yh' D9 y) => Mul_DF D7 (x:.D7) y
+instance (Mul_DF D7 x yh, Add_D D5 yh yh', Snoc yh' D6 y) => Mul_DF D7 (x:.D8) y
+instance (Mul_DF D7 x yh, Add_D D6 yh yh', Snoc yh' D3 y) => Mul_DF D7 (x:.D9) y
+-- impossible                                            Mul_DF D8 D0 _
+instance                                                 Mul_DF D8 D1 D8
+instance                                                 Mul_DF D8 D2 (D1:.D6)
+instance                                                 Mul_DF D8 D3 (D2:.D4)
+instance                                                 Mul_DF D8 D4 (D3:.D2)
+instance                                                 Mul_DF D8 D5 (D4:.D0)
+instance                                                 Mul_DF D8 D6 (D4:.D8)
+instance                                                 Mul_DF D8 D7 (D5:.D6)
+instance                                                 Mul_DF D8 D8 (D6:.D4)
+instance                                                 Mul_DF D8 D9 (D7:.D2)
+instance (Mul_DF D8 x yh,              Snoc yh  D0 y) => Mul_DF D8 (x:.D0) y
+instance (Mul_DF D8 x yh,              Snoc yh  D8 y) => Mul_DF D8 (x:.D1) y
+instance (Mul_DF D8 x yh, Succ yh yh', Snoc yh  D6 y) => Mul_DF D8 (x:.D2) y
+instance (Mul_DF D8 x yh, Add_D D2 yh yh', Snoc yh  D4 y) => Mul_DF D8 (x:.D3) y
+instance (Mul_DF D8 x yh, Add_D D3 yh yh', Snoc yh' D2 y) => Mul_DF D8 (x:.D4) y
+instance (Mul_DF D8 x yh, Add_D D4 yh yh', Snoc yh' D0 y) => Mul_DF D8 (x:.D5) y
+instance (Mul_DF D8 x yh, Add_D D4 yh yh', Snoc yh' D8 y) => Mul_DF D8 (x:.D6) y
+instance (Mul_DF D8 x yh, Add_D D5 yh yh', Snoc yh' D6 y) => Mul_DF D8 (x:.D7) y
+instance (Mul_DF D8 x yh, Add_D D6 yh yh', Snoc yh' D4 y) => Mul_DF D8 (x:.D8) y
+instance (Mul_DF D8 x yh, Add_D D7 yh yh', Snoc yh' D2 y) => Mul_DF D8 (x:.D9) y
+-- impossible                                            Mul_DF D9 D0 _
+instance                                                 Mul_DF D9 D1 D9
+instance                                                 Mul_DF D9 D2 (D1:.D8)
+instance                                                 Mul_DF D9 D3 (D2:.D7)
+instance                                                 Mul_DF D9 D4 (D3:.D6)
+instance                                                 Mul_DF D9 D5 (D4:.D5)
+instance                                                 Mul_DF D9 D6 (D5:.D4)
+instance                                                 Mul_DF D9 D7 (D6:.D3)
+instance                                                 Mul_DF D9 D8 (D7:.D2)
+instance                                                 Mul_DF D9 D9 (D8:.D1)
+instance (Mul_DF D9 x yh,              Snoc yh  D0 y) => Mul_DF D9 (x:.D0) y
+instance (Mul_DF D9 x yh,              Snoc yh  D9 y) => Mul_DF D9 (x:.D1) y
+instance (Mul_DF D9 x yh, Succ yh yh', Snoc yh  D8 y) => Mul_DF D9 (x:.D2) y
+instance (Mul_DF D9 x yh, Add_D D2 yh yh', Snoc yh  D7 y) => Mul_DF D9 (x:.D3) y
+instance (Mul_DF D9 x yh, Add_D D3 yh yh', Snoc yh' D6 y) => Mul_DF D9 (x:.D4) y
+instance (Mul_DF D9 x yh, Add_D D4 yh yh', Snoc yh' D5 y) => Mul_DF D9 (x:.D5) y
+instance (Mul_DF D9 x yh, Add_D D5 yh yh', Snoc yh' D4 y) => Mul_DF D9 (x:.D6) y
+instance (Mul_DF D9 x yh, Add_D D6 yh yh', Snoc yh' D3 y) => Mul_DF D9 (x:.D7) y
+instance (Mul_DF D9 x yh, Add_D D7 yh yh', Snoc yh' D2 y) => Mul_DF D9 (x:.D8) y
+instance (Mul_DF D9 x yh, Add_D D8 yh yh', Snoc yh' D1 y) => Mul_DF D9 (x:.D9) y
 
 
+-- | Assert that @(10x+d) * y == z@ where @x > 0@.
+class (NatNE0_ x, Digit_ d, Nat_ y, Nat_ z) => Mul_F x d y z | x d y -> z
+instance (NatNE0_ x, Digit_ d)              => Mul_F x d D0 D0
+instance (NatNE0_ x, Digit_ d, Nat_ (x:.d)) => Mul_F x d D1 (x:.d)
+instance (Mul_DF D2 x zh, Snoc zh d z)      => Mul_F x d D2 z
+instance (Mul_DF D3 x zh, Snoc zh d z)      => Mul_F x d D3 z
+instance (Mul_DF D4 x zh, Snoc zh d z)      => Mul_F x d D4 z
+instance (Mul_DF D5 x zh, Snoc zh d z)      => Mul_F x d D5 z
+instance (Mul_DF D6 x zh, Snoc zh d z)      => Mul_F x d D6 z
+instance (Mul_DF D7 x zh, Snoc zh d z)      => Mul_F x d D7 z
+instance (Mul_DF D8 x zh, Snoc zh d z)      => Mul_F x d D8 z
+instance (Mul_DF D9 x zh, Snoc zh d z)      => Mul_F x d D9 z
+-- (10x+d) * (10y+0)
+-- == 100xy + 10dy
+-- == 10( 10xy + dy )+0
+-- == 10( (10x+d) * y )+0
+instance (Mul_F x d y z, NatNE0_ x, Digit_ d, NatNE0_ y, NatNE0_ z)
+    => Mul_F x d (y:.D0) (z:.D0)
+-- (10x+d) * (10y+1)
+-- == 100xy + 10x + 10dy + d
+-- == 10( 10xy + x + dy )+d
+-- == 10( (10x+d)*y + x )+d
+instance (Mul_F x d y w, Add_ w x z
+        , NatNE0_ y, Nat_ (z:.d))
+    => Mul_F x d (y:.D1) (z:.d)
+-- (10x+d) * (10y+e)
+-- == 100xy + 10ex + 10dy + de
+-- == 10( 10xy + ex + dy ) + de
+-- == 10( (10x+d)*y + ex ) + de
+instance (Mul_F x d y w0
+        , Mul_DF D2 x w1, Add_ w0 w1 w2
+        , Mul_DF d D2 w3, Add_ (w2:.D0) w3 z
+        , NatNE0_ y)
+    => Mul_F x d (y:.D2) z
+instance (Mul_F x d y w0
+        , Mul_DF D3 x w1, Add_ w0 w1 w2
+        , Mul_DF d D3 w3, Add_ (w2:.D0) w3 z
+        , NatNE0_ y)
+    => Mul_F x d (y:.D3) z
+instance (Mul_F x d y w0
+        , Mul_DF D4 x w1, Add_ w0 w1 w2
+        , Mul_DF d D4 w3, Add_ (w2:.D0) w3 z
+        , NatNE0_ y)
+    => Mul_F x d (y:.D4) z
+instance (Mul_F x d y w0
+        , Mul_DF D5 x w1, Add_ w0 w1 w2
+        , Mul_DF d D5 w3, Add_ (w2:.D0) w3 z
+        , NatNE0_ y)
+    => Mul_F x d (y:.D5) z
+instance (Mul_F x d y w0
+        , Mul_DF D6 x w1, Add_ w0 w1 w2
+        , Mul_DF d D6 w3, Add_ (w2:.D0) w3 z
+        , NatNE0_ y)
+    => Mul_F x d (y:.D6) z
+instance (Mul_F x d y w0
+        , Mul_DF D7 x w1, Add_ w0 w1 w2
+        , Mul_DF d D7 w3, Add_ (w2:.D0) w3 z
+        , NatNE0_ y)
+    => Mul_F x d (y:.D7) z
+instance (Mul_F x d y w0
+        , Mul_DF D8 x w1, Add_ w0 w1 w2
+        , Mul_DF d D8 w3, Add_ (w2:.D0) w3 z
+        , NatNE0_ y)
+    => Mul_F x d (y:.D8) z
+instance (Mul_F x d y w0
+        , Mul_DF D9 x w1, Add_ w0 w1 w2
+        , Mul_DF d D9 w3, Add_ (w2:.D0) w3 z
+        , NatNE0_ y)
+    => Mul_F x d (y:.D9) z
+
+{-
 -- | Assert that @(2x+1) * y == z@ where @x > 0@.
-class (NatNE0_ x, Nat_ y, Nat_ z) => Mul_F x y z | x y -> z
+class    (NatNE0_ x, Nat_ y, Nat_ z) => Mul_F x y z | x y -> z
 instance NatNE0_ x => Mul_F x B0 B0
 instance NatNE0_ x => Mul_F x B1 (x:.B1)
 -- (2x+1) * 2y
 instance (Mul_F x y z, NatNE0_ x, NatNE0_ y, NatNE0_ z)
     => Mul_F x (y:.B0) (z:.B0)
--- (2x+1) * (2y+1) = 2*( (2x+1)*y + x ) + 1, y > 0
+-- (2x+1) * (2y+1) = 2( (2x+1)*y + x )+1, y > 0
 instance (Mul_F x y z', Add x z' z, NatNE0_ x, NatNE0_ y, NatNE0_ z)
     => Mul_F x (y:.B1) (z:.B1)
+-}
+
 
 
 -- | Assert that @(2x+1) * y == z@ where @x > 0@. The functional
 -- dependencies go the other way though.
 class (NatNE0_ x, Nat_ y, Nat_ z) => Mul_B x y z | z x -> y
+{-
 instance NatNE0_ x => Mul_B x B0 B0
 -- instance NatNE0_ x => Mul_B x y B1 -- cannot happen
 -- (2x+1) * 2y
@@ -848,6 +1108,17 @@ instance (Mul_B x y z, NatNE0_ x, NatNE0_ y, NatNE0_ z)
 -- (2x+1) * (2y+1) = 2*( (2x+1)*y + x ) + 1, y >= 0
 instance (Snoc y B1 yt, Mul_B x y z', Add x z' z, NatNE0_ x, NatNE0_ z)
     => Mul_B x yt (z:.B1)
+-}
+
+
+-- | Assert that @x * y == z@ where @x > 0@; by structural induction
+-- on the first argument.
+class    (NatNE0_ x, Nat_ y, Nat_ z) => Mul_ x y z | x y -> z, x z -> y
+{-
+instance Nat_ y                      => Mul_ B1 y y
+instance (Mul_ x y zh, Snoc zh B0 z) => Mul_ (x:.B0) y z
+instance (Mul_F x y z, Mul_B x y z)  => Mul_ (x:.B1) y z
+-}
 
 
 -- | The multiplication relation with full dependencies. Modes:
@@ -877,6 +1148,7 @@ div _ _ = Proxy
 -- tm7 = reflect $ div (mul (succ nat8) nat2) (succ nat2) -- 18/3
 
 
+{-
 ----------------------------------------------------------------
 -- TODO: should we offer @(floor . logBase 2)@ and @(ceiling . logBase 2)@ ?
 -- TODO: general exponentiation/logarithm
