@@ -1081,17 +1081,179 @@ instance (Mul_F x d y w0
         , NatNE0_ y)
     => Mul_F x d (y:.D9) z
 
-{-
--- | Assert that @(2x+1) * y == z@ where @x > 0@.
-class    (NatNE0_ x, Nat_ y, Nat_ z) => Mul_F x y z | x y -> z
-instance NatNE0_ x => Mul_F x B0 B0
-instance NatNE0_ x => Mul_F x B1 (x:.B1)
--- (2x+1) * 2y
-instance (Mul_F x y z, NatNE0_ x, NatNE0_ y, NatNE0_ z)
-    => Mul_F x (y:.B0) (z:.B0)
--- (2x+1) * (2y+1) = 2( (2x+1)*y + x )+1, y > 0
-instance (Mul_F x y z', Add x z' z, NatNE0_ x, NatNE0_ y, NatNE0_ z)
-    => Mul_F x (y:.B1) (z:.B1)
+
+-- | Assert that @d * x == y@ where @d > 0@ and @x > 0@; by structural
+-- induction on @y@, so the functional dependencies go the other way.
+class (DigitNE0_ d, Nat_ x, Nat_ y) => Mul_DB d x y | d y -> x
+-- impossible                                         Mul_DB D0 _  _
+instance (Nat_ x)                                  => Mul_DB D1 x  x
+instance                                              Mul_DB D2 D0 D0
+-- impossible                                         Mul_DB D2 _  D1
+instance                                              Mul_DB D2 D1 D2
+-- impossible                                         Mul_DB D2 _  D3
+instance                                              Mul_DB D2 D2 D4
+-- impossible                                         Mul_DB D2 _  D5
+instance                                              Mul_DB D2 D3 D6
+-- impossible                                         Mul_DB D2 _  D7
+instance                                              Mul_DB D2 D4 D8
+-- impossible                                         Mul_DB D2 _  D9
+instance (Mul_DF D5 y x)                           => Mul_DB D2 x  (y:.D0)
+-- impossible                                         Mul_DB D2 _  (y:.D1)
+instance (Mul_DF D5 y w, Succ w x)                 => Mul_DB D2 x  (y:.D2)
+-- impossible                                         Mul_DB D2 _  (y:.D3)
+instance (Mul_DF D5 y w, Add_D D2 w x)             => Mul_DB D2 x  (y:.D4)
+-- impossible                                         Mul_DB D2 _  (y:.D5)
+instance (Mul_DF D5 y w, Add_D D3 w x)             => Mul_DB D2 x  (y:.D6)
+-- impossible                                         Mul_DB D2 _  (y:.D7)
+instance (Mul_DF D5 y w, Add_D D4 w x)             => Mul_DB D2 x  (y:.D8)
+-- impossible                                         Mul_DB D2 _  (y:.D9)
+instance                                              Mul_DB D3 D0 D0
+-- impossible                                         Mul_DB D3 _  D1
+-- impossible                                         Mul_DB D3 _  D2
+instance                                              Mul_DB D3 D1 D3
+-- impossible                                         Mul_DB D3 _  D4
+-- impossible                                         Mul_DB D3 _  D5
+instance                                              Mul_DB D3 D2 D6
+-- impossible                                         Mul_DB D3 _  D7
+-- impossible                                         Mul_DB D3 _  D8
+instance                                              Mul_DB D3 D3 D9
+{- -- TODO:
+instance                                              Mul_DB D3 x  (y:.D0)
+instance                                              Mul_DB D3 x  (y:.D1)
+instance                                              Mul_DB D3 x  (y:.D2)
+instance                                              Mul_DB D3 x  (y:.D3)
+instance                                              Mul_DB D3 x  (y:.D4)
+instance                                              Mul_DB D3 x  (y:.D5)
+instance                                              Mul_DB D3 x  (y:.D6)
+instance                                              Mul_DB D3 x  (y:.D7)
+instance                                              Mul_DB D3 x  (y:.D8)
+instance                                              Mul_DB D3 x  (y:.D9)
+-- --
+instance                                              Mul_DB D4 D0 D0
+-- impossible                                         Mul_DB D4 _  D1
+-- impossible                                         Mul_DB D4 _  D2
+-- impossible                                         Mul_DB D4 _  D3
+instance                                              Mul_DB D4 D1 D4
+-- impossible                                         Mul_DB D4 _  D5
+-- impossible                                         Mul_DB D4 _  D6
+-- impossible                                         Mul_DB D4 _  D7
+instance                                              Mul_DB D4 D2 D8
+-- impossible                                         Mul_DB D4 _  D9
+instance                                              Mul_DB D4 x  (y:.D0)
+instance                                              Mul_DB D4 x  (y:.D1)
+instance                                              Mul_DB D4 x  (y:.D2)
+instance                                              Mul_DB D4 x  (y:.D3)
+instance                                              Mul_DB D4 x  (y:.D4)
+instance                                              Mul_DB D4 x  (y:.D5)
+instance                                              Mul_DB D4 x  (y:.D6)
+instance                                              Mul_DB D4 x  (y:.D7)
+instance                                              Mul_DB D4 x  (y:.D8)
+instance                                              Mul_DB D4 x  (y:.D9)
+-- --
+instance                                              Mul_DB D5 D0 D0
+-- impossible                                         Mul_DB D5 _  D1
+-- impossible                                         Mul_DB D5 _  D2
+-- impossible                                         Mul_DB D5 _  D3
+-- impossible                                         Mul_DB D5 _  D4
+instance                                              Mul_DB D5 D1 D5
+-- impossible                                         Mul_DB D5 _  D6
+-- impossible                                         Mul_DB D5 _  D7
+-- impossible                                         Mul_DB D5 _  D8
+-- impossible                                         Mul_DB D5 _  D9
+instance                                              Mul_DB D5 x  (y:.D0)
+-- impossible                                         Mul_DB D5 _  (y:.D1)
+-- impossible                                         Mul_DB D5 _  (y:.D2)
+-- impossible                                         Mul_DB D5 _  (y:.D3)
+-- impossible                                         Mul_DB D5 _  (y:.D4)
+instance                                              Mul_DB D5 x  (y:.D5)
+-- impossible                                         Mul_DB D5 _  (y:.D6)
+-- impossible                                         Mul_DB D5 _  (y:.D7)
+-- impossible                                         Mul_DB D5 _  (y:.D8)
+-- impossible                                         Mul_DB D5 _  (y:.D9)
+-- --
+instance                                              Mul_DB D6 D0 D0
+-- impossible                                         Mul_DB D6 _  D1
+-- impossible                                         Mul_DB D6 _  D2
+-- impossible                                         Mul_DB D6 _  D3
+-- impossible                                         Mul_DB D6 _  D4
+-- impossible                                         Mul_DB D6 _  D5
+instance                                              Mul_DB D6 D1 D6
+-- impossible                                         Mul_DB D6 _  D7
+-- impossible                                         Mul_DB D6 _  D8
+-- impossible                                         Mul_DB D6 _  D9
+instance                                              Mul_DB D6 x  (y:.D0)
+instance                                              Mul_DB D6 x  (y:.D1)
+instance                                              Mul_DB D6 x  (y:.D2)
+instance                                              Mul_DB D6 x  (y:.D3)
+instance                                              Mul_DB D6 x  (y:.D4)
+instance                                              Mul_DB D6 x  (y:.D5)
+instance                                              Mul_DB D6 x  (y:.D6)
+instance                                              Mul_DB D6 x  (y:.D7)
+instance                                              Mul_DB D6 x  (y:.D8)
+instance                                              Mul_DB D6 x  (y:.D9)
+-- --
+instance                                              Mul_DB D7 D0 D0
+-- impossible                                         Mul_DB D7 _  D1
+-- impossible                                         Mul_DB D7 _  D2
+-- impossible                                         Mul_DB D7 _  D3
+-- impossible                                         Mul_DB D7 _  D4
+-- impossible                                         Mul_DB D7 _  D5
+-- impossible                                         Mul_DB D7 _  D6
+instance                                              Mul_DB D7 D1 D7
+-- impossible                                         Mul_DB D7 _  D8
+-- impossible                                         Mul_DB D7 _  D9
+instance                                              Mul_DB D7 x  (y:.D0)
+instance                                              Mul_DB D7 x  (y:.D1)
+instance                                              Mul_DB D7 x  (y:.D2)
+instance                                              Mul_DB D7 x  (y:.D3)
+instance                                              Mul_DB D7 x  (y:.D4)
+instance                                              Mul_DB D7 x  (y:.D5)
+instance                                              Mul_DB D7 x  (y:.D6)
+instance                                              Mul_DB D7 x  (y:.D7)
+instance                                              Mul_DB D7 x  (y:.D8)
+instance                                              Mul_DB D7 x  (y:.D9)
+-- --
+instance                                              Mul_DB D8 D0 D0
+-- impossible                                         Mul_DB D8 _  D1
+-- impossible                                         Mul_DB D8 _  D2
+-- impossible                                         Mul_DB D8 _  D3
+-- impossible                                         Mul_DB D8 _  D4
+-- impossible                                         Mul_DB D8 _  D5
+-- impossible                                         Mul_DB D8 _  D6
+-- impossible                                         Mul_DB D8 _  D7
+instance                                              Mul_DB D8 D1 D8
+-- impossible                                         Mul_DB D8 _  D9
+instance                                              Mul_DB D8 x  (y:.D0)
+instance                                              Mul_DB D8 x  (y:.D1)
+instance                                              Mul_DB D8 x  (y:.D2)
+instance                                              Mul_DB D8 x  (y:.D3)
+instance                                              Mul_DB D8 x  (y:.D4)
+instance                                              Mul_DB D8 x  (y:.D5)
+instance                                              Mul_DB D8 x  (y:.D6)
+instance                                              Mul_DB D8 x  (y:.D7)
+instance                                              Mul_DB D8 x  (y:.D8)
+instance                                              Mul_DB D8 x  (y:.D9)
+-- --
+instance                                              Mul_DB D9 D0 D0
+-- impossible                                         Mul_DB D9 _  D1
+-- impossible                                         Mul_DB D9 _  D2
+-- impossible                                         Mul_DB D9 _  D3
+-- impossible                                         Mul_DB D9 _  D4
+-- impossible                                         Mul_DB D9 _  D5
+-- impossible                                         Mul_DB D9 _  D6
+-- impossible                                         Mul_DB D9 _  D7
+-- impossible                                         Mul_DB D9 _  D8
+instance                                              Mul_DB D9 D1 D9
+instance                                              Mul_DB D9 x  (y:.D0)
+instance                                              Mul_DB D9 x  (y:.D1)
+instance                                              Mul_DB D9 x  (y:.D2)
+instance                                              Mul_DB D9 x  (y:.D3)
+instance                                              Mul_DB D9 x  (y:.D4)
+instance                                              Mul_DB D9 x  (y:.D5)
+instance                                              Mul_DB D9 x  (y:.D6)
+instance                                              Mul_DB D9 x  (y:.D7)
+instance                                              Mul_DB D9 x  (y:.D8)
+instance                                              Mul_DB D9 x  (y:.D9)
 -}
 
 
