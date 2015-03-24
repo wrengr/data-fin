@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@community.haskell.org>   ~ 2015.02.25
+-- wren gayle romano <wren@community.haskell.org>   ~ 2015.03.23
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -69,7 +69,8 @@ Library
                      -- N.B., major smallcheck API break between 0.5 and 0.6
                      , smallcheck     >= 0.4     && < 1.2
                      , lazysmallcheck >= 0.5     && < 0.7
-                     , QuickCheck     >= 2.4.1.1 && < 2.8
+                     -- TODO: does QuickCheck-2.8 actually work for us?
+                     , QuickCheck     >= 2.4.1.1 && < 2.9
     
     -- I think this is all that needs doing to get rid of the warnings?
     if flag(base4)

@@ -1117,8 +1117,8 @@ instance                                              Mul_DB D3 D2 D6
 -- impossible                                         Mul_DB D3 _  D7
 -- impossible                                         Mul_DB D3 _  D8
 instance                                              Mul_DB D3 D3 D9
+instance (Mul_DB D3 w y, Snoc w D0 x, NatNE0_ y)   => Mul_DB D3 x  (y:.D0)
 {- -- TODO:
-instance                                              Mul_DB D3 x  (y:.D0)
 instance                                              Mul_DB D3 x  (y:.D1)
 instance                                              Mul_DB D3 x  (y:.D2)
 instance                                              Mul_DB D3 x  (y:.D3)
@@ -1257,11 +1257,12 @@ instance                                              Mul_DB D9 x  (y:.D9)
 -}
 
 
-
--- | Assert that @(2x+1) * y == z@ where @x > 0@. The functional
+-- | Assert that @(10x+d) * y == z@ where @x > 0@. The functional
 -- dependencies go the other way though.
-class (NatNE0_ x, Nat_ y, Nat_ z) => Mul_B x y z | z x -> y
+class (NatNE0_ x, Digit_ d, Nat_ y, Nat_ z) => Mul_F x d y z | x d z -> y
+instance (NatNE0_ x, Digit_ d) => Mul_F x d D0 D0
 {-
+class (NatNE0_ x, Nat_ y, Nat_ z) => Mul_B x y z | z x -> y
 instance NatNE0_ x => Mul_B x B0 B0
 -- instance NatNE0_ x => Mul_B x y B1 -- cannot happen
 -- (2x+1) * 2y
