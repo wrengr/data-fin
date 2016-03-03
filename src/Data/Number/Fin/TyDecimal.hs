@@ -15,12 +15,14 @@
 -}
 
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 701
--- N.B., Data.Proxy isn't "safe".
+#if __GLASGOW_HASKELL__ >= 710
+{-# LANGUAGE Safe #-}
+#elif __GLASGOW_HASKELL__ >= 701
+-- N.B., Data.Proxy isn't "safe" in old GHC.
 {-# LANGUAGE Trustworthy #-}
 #endif
 ----------------------------------------------------------------
---                                                    2015.02.25
+--                                                    2016.03.02
 -- |
 -- Module      :  Data.Number.Fin.TyDecimal
 -- Copyright   :  2012--2015 wren gayle romano,
@@ -1259,8 +1261,10 @@ instance                                              Mul_DB D9 x  (y:.D9)
 
 -- | Assert that @(10x+d) * y == z@ where @x > 0@. The functional
 -- dependencies go the other way though.
-class (NatNE0_ x, Digit_ d, Nat_ y, Nat_ z) => Mul_F x d y z | x d z -> y
-instance (NatNE0_ x, Digit_ d) => Mul_F x d D0 D0
+--
+-- BUG: this is not fully implemented yet.
+class (NatNE0_ x, Digit_ d, Nat_ y, Nat_ z) => Mul_B x d y z | x d z -> y
+instance (NatNE0_ x, Digit_ d) => Mul_B x d D0 D0
 {-
 class (NatNE0_ x, Nat_ y, Nat_ z) => Mul_B x y z | z x -> y
 instance NatNE0_ x => Mul_B x B0 B0
@@ -1276,6 +1280,8 @@ instance (Snoc y B1 yt, Mul_B x y z', Add x z' z, NatNE0_ x, NatNE0_ z)
 
 -- | Assert that @x * y == z@ where @x > 0@; by structural induction
 -- on the first argument.
+--
+-- BUG: this is not fully implemented yet.
 class    (NatNE0_ x, Nat_ y, Nat_ z) => Mul_ x y z | x y -> z, x z -> y
 {-
 instance Nat_ y                      => Mul_ B1 y y

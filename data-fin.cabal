@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@community.haskell.org>   ~ 2015.05.30
+-- wren gayle romano <wren@community.haskell.org>   ~ 2016.03.02
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -13,7 +13,7 @@ Stability:      experimental
 Homepage:       http://code.haskell.org/~wren/
 Author:         wren gayle romano
 Maintainer:     wren@community.haskell.org
-Copyright:      Copyright (c) 2012--2015 wren gayle romano
+Copyright:      Copyright (c) 2012--2016 wren gayle romano
 License:        BSD3
 License-File:   LICENSE
 
@@ -63,13 +63,13 @@ Library
                      -- Data.Reflection.OfType
     Other-Modules:     Data.Number.Fin.TyOrdering
     
-    Build-Depends:     tagged         >= 0.2.3   && < 0.8
-                     , reflection     >= 1.1.6   && < 1.6
+    -- TODO: do QuickCheck-2.8, tagged-0.8.4, reflection-2.1.2 actually *work* for us?
+    Build-Depends:     tagged         >= 0.2.3   && < 0.9
+                     , reflection     >= 1.1.6   && < 2.2
                      , prelude-safeenum < 0.2
                      -- N.B., major smallcheck API break between 0.5 and 0.6
                      , smallcheck     >= 0.4     && < 1.2
                      , lazysmallcheck >= 0.5     && < 0.7
-                     -- TODO: does QuickCheck-2.8 actually work for us?
                      , QuickCheck     >= 2.4.1.1 && < 2.9
     
     -- I think this is all that needs doing to get rid of the warnings?
