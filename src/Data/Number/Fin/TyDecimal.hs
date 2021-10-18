@@ -66,7 +66,7 @@ module Data.Number.Fin.TyDecimal
       D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, (:.)
     -- ** Type-level 'Ordering'
     , LT_, EQ_, GT_
-    
+
     -- * Kind predicates
     , Nat, NatNE0
     -- * Proxies for some small numbers
@@ -80,7 +80,7 @@ module Data.Number.Fin.TyDecimal
     , MaxBoundWord16
     , MaxBoundWord32
     , MaxBoundWord64
-    
+
     -- * Arithmetic
     -- ** successor\/predecessor
     , Succ, succ, pred
@@ -227,16 +227,16 @@ instance NatNE0_ x => Nat_ (x:.D9)
 
 
 -- BUG: stack overflow issues, unlike the big-endian notation?
-instance Reifies D0 Integer where reflect _ = 0 
-instance Reifies D1 Integer where reflect _ = 1 
-instance Reifies D2 Integer where reflect _ = 2 
-instance Reifies D3 Integer where reflect _ = 3 
-instance Reifies D4 Integer where reflect _ = 4 
-instance Reifies D5 Integer where reflect _ = 5 
-instance Reifies D6 Integer where reflect _ = 6 
-instance Reifies D7 Integer where reflect _ = 7 
-instance Reifies D8 Integer where reflect _ = 8 
-instance Reifies D9 Integer where reflect _ = 9 
+instance Reifies D0 Integer where reflect _ = 0
+instance Reifies D1 Integer where reflect _ = 1
+instance Reifies D2 Integer where reflect _ = 2
+instance Reifies D3 Integer where reflect _ = 3
+instance Reifies D4 Integer where reflect _ = 4
+instance Reifies D5 Integer where reflect _ = 5
+instance Reifies D6 Integer where reflect _ = 6
+instance Reifies D7 Integer where reflect _ = 7
+instance Reifies D8 Integer where reflect _ = 8
+instance Reifies D9 Integer where reflect _ = 9
 instance NatNE0_ x => Reifies (x:.D0) Integer where
     reflect p = 10 * reflect (div10 p)
 instance NatNE0_ x => Reifies (x:.D1) Integer where
@@ -295,16 +295,16 @@ reifyNat i k
 
 
 
-nat0 :: Proxy D0; nat0 = Proxy 
-nat1 :: Proxy D1; nat1 = Proxy 
-nat2 :: Proxy D2; nat2 = Proxy 
-nat3 :: Proxy D3; nat3 = Proxy 
-nat4 :: Proxy D4; nat4 = Proxy 
-nat5 :: Proxy D5; nat5 = Proxy 
-nat6 :: Proxy D6; nat6 = Proxy 
-nat7 :: Proxy D7; nat7 = Proxy 
-nat8 :: Proxy D8; nat8 = Proxy 
-nat9 :: Proxy D9; nat9 = Proxy 
+nat0 :: Proxy D0; nat0 = Proxy
+nat1 :: Proxy D1; nat1 = Proxy
+nat2 :: Proxy D2; nat2 = Proxy
+nat3 :: Proxy D3; nat3 = Proxy
+nat4 :: Proxy D4; nat4 = Proxy
+nat5 :: Proxy D5; nat5 = Proxy
+nat6 :: Proxy D6; nat6 = Proxy
+nat7 :: Proxy D7; nat7 = Proxy
+nat8 :: Proxy D8; nat8 = Proxy
+nat9 :: Proxy D9; nat9 = Proxy
 
 
 -- type MinBoundInt8  = Negative (D1:.D2:.D8)
@@ -314,18 +314,18 @@ nat9 :: Proxy D9; nat9 = Proxy
 --     Negative (D9:. D2:.D2:.D3:. D3:.D7:.D2:. D0:.D3:.D6:. D8:.D5:.D4:. D7:.D7:.D5:. D8:.D0:.D8)
 -- TODO: MinBoundInt
 
-type MaxBoundInt8  = D1:.D2:.D7 
-type MaxBoundInt16 = D3:.D2:.D7:.D6:.D7 
-type MaxBoundInt32 = D2:.D1:.D4:.D7:.D4:.D8:.D3:.D6:.D4:.D7 
+type MaxBoundInt8  = D1:.D2:.D7
+type MaxBoundInt16 = D3:.D2:.D7:.D6:.D7
+type MaxBoundInt32 = D2:.D1:.D4:.D7:.D4:.D8:.D3:.D6:.D4:.D7
 type MaxBoundInt64 =
-    D9:.D2:.D2:.D3:.D3:.D7:.D2:.D0:.D3:.D6:.D8:.D5:.D4:.D7:.D7:.D5:.D8:.D0:.D7 
+    D9:.D2:.D2:.D3:.D3:.D7:.D2:.D0:.D3:.D6:.D8:.D5:.D4:.D7:.D7:.D5:.D8:.D0:.D7
 -- TODO: MaxBoundInt
 
-type MaxBoundWord8  = D2:.D5:.D5 
-type MaxBoundWord16 = D6:.D5:.D5:.D3:.D5 
-type MaxBoundWord32 = D4:.D2:.D9:.D4:.D9:.D6:.D7:.D2:.D9:.D5 
+type MaxBoundWord8  = D2:.D5:.D5
+type MaxBoundWord16 = D6:.D5:.D5:.D3:.D5
+type MaxBoundWord32 = D4:.D2:.D9:.D4:.D9:.D6:.D7:.D2:.D9:.D5
 type MaxBoundWord64 =
-    D1:.D8:.D4:.D4:.D6:.D7:.D4:.D4:.D0:.D7:.D3:.D7:.D0:.D9:.D5:.D5:.D1:.D6:.D1:.D5 
+    D1:.D8:.D4:.D4:.D6:.D7:.D4:.D4:.D0:.D7:.D3:.D7:.D0:.D9:.D5:.D5:.D1:.D6:.D1:.D5
 -- TODO: MaxBoundWord
 
 
