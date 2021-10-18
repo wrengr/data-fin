@@ -10,13 +10,13 @@
            , TypeOperators
            #-}
 ----------------------------------------------------------------
---                                                    2013.03.12
+--                                                    2021.10.17
 -- |
 -- Module      :  Data.Number.Fin.TyBinary
--- Copyright   :  2012--2013 wren gayle romano,
+-- Copyright   :  2012--2021 wren gayle romano,
 --                2004--2007 Oleg Kiselyov and Chung-chieh Shan
 -- License     :  BSD3
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
@@ -54,13 +54,13 @@ module Data.Number.Fin.TyBinary
       B0, B1, (:.)
     -- ** Type-level 'Ordering'
     , LT_, EQ_, GT_
-    
+
     -- * Kind predicates
     , Nat, NatNE0
     -- * sample @Nat@ types and proxies for their values
     , Nat0, Nat1, Nat2, Nat3, Nat4, Nat5, Nat6, Nat7, Nat8, Nat9
     , nat0, nat1, nat2, nat3, nat4, nat5, nat6, nat7, nat8, nat9
-    
+
     -- * Arithmetic
     -- ** successor\/predecessor
     , Succ, succ, pred
@@ -188,7 +188,7 @@ type MaxBoundWord32 = Positive (D4 (D2(D9(D4 (D9(D6(D7 (D2(D9(D5 D_))))))))))
 type MaxBoundWord64 =
     Positive (D1(D8 (D4(D4(D6 (D7(D4(D4 (D0(D7(D3 (D7(D0(D9 (D5(D5(D1 (D6(D1(D5
     D_))))))))))))))))))))
-    
+
 instance Reifies B0 Int8 where reflect_ _ = inhabit 0
 instance Reifies B1 Int8 where reflect_ _ = inhabit 1
 instance (NatNE0_ x, NatLE (x:.B0) MaxBoundInt8)
@@ -245,27 +245,27 @@ div2 _ = Proxy
 {-# INLINE div2 #-}
 
 -- some popular numbers
-type Nat0 = B0 
-type Nat1 = B1 
-type Nat2 = B1:.B0 
-type Nat3 = B1:.B1 
-type Nat4 = B1:.B0:.B0 
-type Nat5 = B1:.B0:.B1 
-type Nat6 = B1:.B1:.B0 
-type Nat7 = B1:.B1:.B1 
-type Nat8 = B1:.B0:.B0:.B0 
-type Nat9 = B1:.B0:.B0:.B1 
+type Nat0 = B0
+type Nat1 = B1
+type Nat2 = B1:.B0
+type Nat3 = B1:.B1
+type Nat4 = B1:.B0:.B0
+type Nat5 = B1:.B0:.B1
+type Nat6 = B1:.B1:.B0
+type Nat7 = B1:.B1:.B1
+type Nat8 = B1:.B0:.B0:.B0
+type Nat9 = B1:.B0:.B0:.B1
 
-nat0 :: Proxy Nat0; nat0 = Proxy 
-nat1 :: Proxy Nat1; nat1 = Proxy 
-nat2 :: Proxy Nat2; nat2 = Proxy 
-nat3 :: Proxy Nat3; nat3 = Proxy 
-nat4 :: Proxy Nat4; nat4 = Proxy 
-nat5 :: Proxy Nat5; nat5 = Proxy 
-nat6 :: Proxy Nat6; nat6 = Proxy 
-nat7 :: Proxy Nat7; nat7 = Proxy 
-nat8 :: Proxy Nat8; nat8 = Proxy 
-nat9 :: Proxy Nat9; nat9 = Proxy 
+nat0 :: Proxy Nat0; nat0 = Proxy
+nat1 :: Proxy Nat1; nat1 = Proxy
+nat2 :: Proxy Nat2; nat2 = Proxy
+nat3 :: Proxy Nat3; nat3 = Proxy
+nat4 :: Proxy Nat4; nat4 = Proxy
+nat5 :: Proxy Nat5; nat5 = Proxy
+nat6 :: Proxy Nat6; nat6 = Proxy
+nat7 :: Proxy Nat7; nat7 = Proxy
+nat8 :: Proxy Nat8; nat8 = Proxy
+nat9 :: Proxy Nat9; nat9 = Proxy
 
 -- tn8 = reflect nat8
 

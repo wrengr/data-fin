@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                    2013.07.20
+--                                                    2021.10.17
 -- |
 -- Module      :  Data.Number.Fin
--- Copyright   :  2012--2013 wren gayle romano
+-- Copyright   :  2012--2021 wren gayle romano
 -- License     :  BSD3
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --

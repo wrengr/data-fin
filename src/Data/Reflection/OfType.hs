@@ -10,15 +10,15 @@
 {-# LANGUAGE Trustworthy #-}
 #endif
 ----------------------------------------------------------------
---                                                    2013.05.29
+--                                                    2021.10.17
 -- |
 -- Module      :  Data.Reflection.OfType
--- Copyright   :  2012--2013 wren gayle romano,
+-- Copyright   :  2012--2021 wren gayle romano,
 --                2009--2012 Edward Kmett,
 --                2012 Elliott Hird,
 --                2004 Oleg Kiselyov and Chung-chieh Shan
 -- License     :  BSD3
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  semi-portable (rank-N, scoped tyvars, MPTCs)
 --
@@ -496,13 +496,13 @@ prop_reificationsAreReflected p x =
 ----------------------------------------------------------------
 {-
 -- To avoid needing to enable EmptyDataDecls whenever we check this
-data LT_ = LT_ 
-data EQ_ = EQ_ 
-data GT_ = GT_ 
+data LT_ = LT_
+data EQ_ = EQ_
+data GT_ = GT_
 
-instance Reifies LT_ Ordering where reflect_ _ = inhabit LT 
-instance Reifies EQ_ Ordering where reflect_ _ = inhabit EQ 
-instance Reifies GT_ Ordering where reflect_ _ = inhabit GT 
+instance Reifies LT_ Ordering where reflect_ _ = inhabit LT
+instance Reifies EQ_ Ordering where reflect_ _ = inhabit EQ
+instance Reifies GT_ Ordering where reflect_ _ = inhabit GT
 
 instance Reflects LT_ Ordering where
     reify_ LT k = Just (k Proxy)

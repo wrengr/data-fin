@@ -13,12 +13,12 @@
 {-# LANGUAGE Trustworthy #-}
 #endif
 ----------------------------------------------------------------
---                                                    2014.03.07
+--                                                    2021.10.17
 -- |
 -- Module      :  Data.Number.Fin.Integer
--- Copyright   :  2012--2014 wren gayle romano
+-- Copyright   :  2012--2021 wren gayle romano
 -- License     :  BSD3
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
@@ -28,21 +28,21 @@ module Data.Number.Fin.Integer
     (
     -- * @Fin@, finite sets of natural numbers
       Fin()
-    
+
     -- ** Showing types
     , showFinType
     , showsFinType
-    
+
     -- ** Convenience functions
     , minBoundOf
     , maxBoundOf
-    
+
     -- ** Introduction and elimination
     , toFin
     , toFinProxy
     , toFinCPS
     , fromFin
-    
+
     -- ** Views and coersions
     -- *** Weakening and maximum views
     , weaken
@@ -50,18 +50,18 @@ module Data.Number.Fin.Integer
     , weakenPlus
     , maxView
     , maxViewLE
-    
+
     -- *** Widening and the predecessor view
     , widen
     , widenLE
     , widenPlus
     , predView
-    
+
     -- *** The ordinal-sum functor
     , plus
     , unplus
     , fplus
-    
+
     -- *** Face- and degeneracy-maps
     , thin
     , thick
@@ -267,22 +267,22 @@ instance Nat n => Enum (Fin n) where
         Just y  -> y
         Nothing -> _succ_maxBound "Fin" -- cf, @GHC.Word.succError@
     {-# INLINE succ #-}
-    
+
     pred x =
         case SE.pred x of
         Just y  -> y
         Nothing -> _pred_minBound "Fin" -- cf, @GHC.Word.predError@
     {-# INLINE pred #-}
-    
+
     toEnum i =
         case SE.toEnum i of
         Just y  -> y
         Nothing -> _toEnum_OOR "Fin" -- cf, @GHC.Word.toEnumError@
     {-# INLINE toEnum #-}
-    
+
     fromEnum = fromInteger . fromFin
     {-# INLINE fromEnum #-}
-    
+
     -- Hopefully list fusion will get rid of the map, and preserve
     -- the fusion tricks in GHC.Enum...
     enumFrom     x@(Fin i)        = map Fin (enumFromTo i (maxBoundOf x))
@@ -338,7 +338,7 @@ instance Nat n => SE.DownwardEnum (Fin n) where
     {-# INLINE precedes #-}
     {-# INLINE enumDownFrom #-}
     {-# INLINE enumDownFromTo #-}
-    
+
 instance Nat n => SE.Enum (Fin n) where
     toEnum i
         | 0 <= j && j <= maxBoundOf x = Just x
@@ -464,7 +464,7 @@ instance Nat n => QC.Arbitrary (Fin n) where
             -- TODO: use extensible-exceptions instead of 'error'
         where
         x = maxBoundOf (__ :: Fin n)
-        
+
 
 
 instance Nat n => QC.CoArbitrary (Fin n) where
@@ -486,7 +486,7 @@ instance (Nat n, Monad m) => SC.CoSerial m (Fin n) where
     coseries rs =
         SC.alts0 rs >>- \z ->
         SC.alts1 rs >>- \f ->
-        return $ \(Fin i) -> 
+        return $ \(Fin i) ->
             if i > 0
             then
                 let j = Fin (i-1) :: Fin n
@@ -502,7 +502,7 @@ instance Nat n => SC.Serial (Fin n) where
             case toFin (toInteger d) of
             Nothing -> enumFromTo minBound maxBound
             Just n  -> enumFromTo minBound n
-    
+
     coseries rs d =
         [ \(Fin i) ->
             if i > 0

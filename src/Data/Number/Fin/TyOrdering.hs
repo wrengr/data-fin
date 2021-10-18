@@ -11,13 +11,13 @@
 {-# LANGUAGE Safe #-}
 #endif
 ----------------------------------------------------------------
---                                                    2013.05.29
+--                                                    2021.10.17
 -- |
 -- Module      :  Data.Number.Fin.TyOrdering
--- Copyright   :  2012--2013 wren gayle romano,
+-- Copyright   :  2012--2021 wren gayle romano,
 --                2004--2007 Oleg Kiselyov and Chung-chieh Shan
 -- License     :  BSD3
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
@@ -62,9 +62,9 @@ data LT_ deriving Typeable
 data EQ_ deriving Typeable
 data GT_ deriving Typeable
 
-instance Reifies LT_ Ordering where reflect _ = LT 
-instance Reifies EQ_ Ordering where reflect _ = EQ 
-instance Reifies GT_ Ordering where reflect _ = GT 
+instance Reifies LT_ Ordering where reflect _ = LT
+instance Reifies EQ_ Ordering where reflect _ = EQ
+instance Reifies GT_ Ordering where reflect _ = GT
 
 
 -- | Compose comparison relations. Perform the first comparison,

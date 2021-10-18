@@ -10,13 +10,13 @@
            , FunctionalDependencies
            #-}
 ----------------------------------------------------------------
---                                                    2013.01.04
+--                                                    2021.10.17
 -- |
 -- Module      :  Data.Number.Fin.TyInteger
--- Copyright   :  2012--2013 wren gayle romano,
+-- Copyright   :  2012--2021 wren gayle romano,
 --                2004--2007 Oleg Kiselyov and Chung-chieh Shan
 -- License     :  BSD3
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
@@ -105,7 +105,7 @@ module Data.Number.Fin.TyInteger
     , MaxBoundWord32
     , MaxBoundWord64
     -- MaxBoundWord
-    
+
     -- * Some classes for manipulating type-level integers
     , LE()
     -- Pred()
