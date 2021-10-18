@@ -22,13 +22,13 @@
 {-# LANGUAGE Trustworthy #-}
 #endif
 ----------------------------------------------------------------
---                                                    2016.03.02
+--                                                    2021.10.17
 -- |
 -- Module      :  Data.Number.Fin.TyDecimal
--- Copyright   :  2012--2015 wren gayle romano,
+-- Copyright   :  2012--2021 wren gayle romano,
 --                2004--2007 Oleg Kiselyov and Chung-chieh Shan
 -- License     :  BSD3
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
@@ -440,6 +440,9 @@ instance
 -- > Add_ x (z-x) z  -- when it's defined.
 --
 class (Nat_ x, Nat_ y, Nat_ z) => Add_ x y z | x y -> z, z x -> y
+-- BUG(2021.10.17): the 'Add_D' class requires/entails that both
+-- the second and third arguments are 'Nat_'; so why is GHC 9.0.1
+-- no longer inferring that?
 instance (Add_D D0 y z)        => Add_ D0 y y
 instance (Add_D D1 y z)        => Add_ D1 y y
 instance (Add_D D2 y z)        => Add_ D2 y y
@@ -812,6 +815,11 @@ assert_NatLE Proxy Proxy = ()
 
 -- | Assert that @x < y@. This is just a shorthand for @x <= pred y@.
 class        (Nat_ x, NatNE0_ y) => NatLT x y
+-- BUG(2021.10.17): the class @Succ a b@ entails/requires @(Nat_
+-- a, NatNE0_ b)@, so the @Succ y' y@ should entail @NatNE0_ y@;
+-- and the 'NatLE' class entails 'Nat_' for both arguments, so that
+-- should give @Nat_ x@; so why does GHC 9.0.1 no longer inferring
+-- that?
 instance (Succ y' y, NatLE x y') => NatLT x y
 
 
