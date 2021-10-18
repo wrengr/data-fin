@@ -1,19 +1,19 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@community.haskell.org>   ~ 2016.03.02
+-- wren gayle romano <wren@cpan.org>                ~ 2021.10.17
 ----------------------------------------------------------------
 
--- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
--- and source-repository:.
-Cabal-Version:  >= 1.6
+-- Cabal >=1.10 is required by Hackage.
+Cabal-Version:  >= 1.10
 Build-Type:     Simple
 
 Name:           data-fin
-Version:        0.1.9999
+Version:        0.1.99999
 Stability:      experimental
-Homepage:       http://code.haskell.org/~wren/
+Homepage:       https://wrengr.org/software/hackage.html
+Bug-Reports:    https://github.com/wrengr/data-fin/issues
 Author:         wren gayle romano
-Maintainer:     wren@community.haskell.org
-Copyright:      Copyright (c) 2012--2016 wren gayle romano
+Maintainer:     wren@cpan.org
+Copyright:      Copyright (c) 2012–2021 wren gayle romano
 License:        BSD3
 License-File:   LICENSE
 
@@ -22,15 +22,24 @@ Synopsis:
     Finite totally ordered sets
 Description:
     Finite totally ordered sets
-    
 
-Tested-With:
-    GHC ==6.12.1, GHC ==7.6.1, GHC ==7.8.0
 Extra-source-files:
     AUTHORS, README, CHANGELOG
+
+-- This should work as far back as GHC 6.12.1, but we don't verify that by CI.
+-- <https://github.com/wrengr/data-fin/actions?query=workflow%3Aci>
+Tested-With:
+    GHC ==8.0.2,
+    GHC ==8.2.2,
+    GHC ==8.4.4,
+    GHC ==8.6.5,
+    GHC ==8.8.4,
+    GHC ==8.10.3,
+    GHC ==9.0.1
+
 Source-Repository head
-    Type:     darcs
-    Location: http://community.haskell.org/~wren/data-fin
+    Type:     git
+    Location: https://github.com/wrengr/data-fin.git
 
 ----------------------------------------------------------------
 Flag base4
@@ -45,6 +54,7 @@ Flag splitBase
                  old-time, packedstring, pretty, process, random.
 ----------------------------------------------------------------
 Library
+    Default-Language:  Haskell2010
     Hs-Source-Dirs:    src
     Exposed-Modules:   Data.Number.Fin
                      , Data.Number.Fin.Integer
@@ -62,7 +72,7 @@ Library
                      -- TODO: OfType should be moved elsewhere if we don't use it...
                      -- Data.Reflection.OfType
     Other-Modules:     Data.Number.Fin.TyOrdering
-    
+
     -- TODO: do QuickCheck-2.8, tagged-0.8.4, reflection-2.1.2 actually *work* for us?
     Build-Depends:     tagged         >= 0.2.3   && < 0.9
                      , reflection     >= 1.1.6   && < 2.2
@@ -71,7 +81,7 @@ Library
                      , smallcheck     >= 0.4     && < 1.2
                      , lazysmallcheck >= 0.5     && < 0.7
                      , QuickCheck     >= 2.4.1.1 && < 2.9
-    
+
     -- I think this is all that needs doing to get rid of the warnings?
     if flag(base4)
         Build-Depends: base >= 4 && < 5
