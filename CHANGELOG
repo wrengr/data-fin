@@ -1,3 +1,6 @@
+0.1.99999 (2021-11-02):
+    - Added `Tested-With: GHC == 9.2.1` (didn't actually need to
+      nudge the upper bound on 'base', because it's already lenient)
 0.1.9999 (2015-05-30):
     - Moved VERSION to CHANGELOG
 0.1.999 (2015.02.25):
@@ -6,4 +9,4 @@
 0.1.1 (2014.03.07):
     - Updated to work with SmallCheck >= 1.0 && < 1.2
 0.1.0 (2013.07.20):
-	- Initial release
+    - Initial release
