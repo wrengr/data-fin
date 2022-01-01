@@ -10,7 +10,7 @@
 {-# LANGUAGE Trustworthy #-}
 #endif
 ----------------------------------------------------------------
---                                                    2021.10.17
+--                                                    2021.12.31
 -- |
 -- Module      :  Data.Reflection.OfType
 -- Copyright   :  2012--2021 wren gayle romano,
@@ -373,11 +373,11 @@ instance Show a => Show (Inhabited a) where
     showsPrec p x = showsPrec p (choose x)
     {-# INLINE showsPrec #-}
 
+-- (2021.12.31): removed the definition of @(/=)@ for:
+-- <https://github.com/haskell/core-libraries-committee/issues/3>
 instance Eq a => Eq (Inhabited a) where
     x == y = choose x == choose y
-    x /= y = choose x /= choose y
     {-# INLINE (==) #-}
-    {-# INLINE (/=) #-}
 
 instance Ord a => Ord (Inhabited a) where
     compare x y = compare (choose x) (choose y)

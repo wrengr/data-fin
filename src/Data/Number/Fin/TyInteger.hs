@@ -10,7 +10,7 @@
            , FunctionalDependencies
            #-}
 ----------------------------------------------------------------
---                                                    2021.10.17
+--                                                    2021.12.31
 -- |
 -- Module      :  Data.Number.Fin.TyInteger
 -- Copyright   :  2012--2021 wren gayle romano,
@@ -366,9 +366,10 @@ reflect_OfType _ = reflect (Proxy :: Proxy (OfType x a))
 
 
 {- TODO: prove correct so that we can use these optimized instances
+-- (2021.12.31): removed the definition of @(/=)@ for:
+-- <https://github.com/haskell/core-libraries-committee/issues/3>
 instance Eq (OfType x a) where
     _ == _ = True
-    _ /= _ = False
 
 instance Ord (OfType x a) where
     compare _ _ = EQ

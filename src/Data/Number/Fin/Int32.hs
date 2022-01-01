@@ -14,7 +14,7 @@
 {-# LANGUAGE Trustworthy #-}
 #endif
 ----------------------------------------------------------------
---                                                    2021.10.17
+--                                                    2021.12.31
 -- |
 -- Module      :  Data.Number.Fin.Int32
 -- Copyright   :  2012--2021 wren gayle romano
@@ -205,12 +205,12 @@ instance (NatLE n MaxBoundInt32, Nat n) => Read (Fin n) where
             maybe [] (\n -> [(n,s2)]) (toFin i)
 
 ----------------------------------------------------------------
+-- (2021.12.31): removed the definition of @(/=)@ for:
+-- <https://github.com/haskell/core-libraries-committee/issues/3>
 -- HACK: Not derived, just so we can add the @Nat n@ constraint...
 instance (NatLE n MaxBoundInt32, Nat n) => Eq (Fin n) where
     Fin i == Fin j  =  i == j
-    Fin i /= Fin j  =  i /= j
     {-# INLINE (==) #-}
-    {-# INLINE (/=) #-}
 
 ----------------------------------------------------------------
 -- HACK: Not derived, just so we can add the @Nat n@ constraint...
