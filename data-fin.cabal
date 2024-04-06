@@ -42,8 +42,9 @@ Tested-With:
     GHC ==8.10.3,
     GHC ==9.0.1,
     GHC ==9.2.4,
-    GHC ==9.4.4,
-    GHC ==9.6.1
+    GHC ==9.4.8,
+    GHC ==9.6.4,
+    GHC ==9.8.1
 
 Source-Repository head
     Type:     git
