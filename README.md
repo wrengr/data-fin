@@ -1,8 +1,7 @@
 data-fin
 ========
+[![CI Status](https://github.com/wrengr/data-fin/actions/workflows/ci.yml/badge.svg)](https://github.com/wrengr/data-fin/actions?query=workflow%3Aci+-event%3Apull_request)
 [![Hackage version](https://img.shields.io/hackage/v/data-fin.svg?style=flat)](https://hackage.haskell.org/package/data-fin) 
-[![Build Status](https://github.com/wrengr/data-fin/workflows/ci/badge.svg)](https://github.com/wrengr/data-fin/actions?query=workflow%3Aci)
-[![Dependencies](https://img.shields.io/hackage-deps/v/data-fin.svg?style=flat)](http://packdeps.haskellers.com/specific?package=data-fin)
 
 This package provides the family of canonical finite sets, indexed
 by natural numbers giving their cardinality. In addition, we provide
